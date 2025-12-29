@@ -1,6 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { db } from '../services/storage';
 import { useData } from '../context/DataContext';
+import { useNotification } from '../context/NotificationContext';
+import { usePermissions } from '../hooks/usePermissions';
 import { Condominio } from '../types';
 import { CondominioForm } from '../components/CondominioForm';
 import { 
@@ -15,6 +17,8 @@ import {
 
 export const CondominiList: React.FC = () => {
   const { condomini, refreshData } = useData();
+  const { notify } = useNotification();
+  const { canCreateCondominio, canEditCondominio, canDeleteCondominio } = usePermissions();
   
   // Stati per filtri e ordinamento
   const [filterCity, setFilterCity] = useState<string>('');
@@ -54,14 +58,16 @@ export const CondominiList: React.FC = () => {
     try {
       if (editingCondo) {
         await db.update<Condominio>('condomini', editingCondo.id, data);
+        notify('success', 'Condominio Modificato', 'I dati sono stati aggiornati correttamente.');
       } else {
         await db.insert<Condominio>('condomini', data);
+        notify('success', 'Condominio Creato', 'Nuovo condominio aggiunto al portafoglio.');
       }
       setIsModalOpen(false);
       setEditingCondo(null);
-      await refreshData(); // Ricarica tutto
+      await refreshData();
     } catch (err: any) {
-      alert(`Errore durante il salvataggio: ${err.message}`);
+      notify('error', 'Errore', `Impossibile salvare: ${err.message}`);
     }
   };
 
@@ -70,26 +76,30 @@ export const CondominiList: React.FC = () => {
       try {
         await db.delete('condomini', id);
         await refreshData();
+        notify('warning', 'Eliminato', 'Condominio rimosso con successo.');
       } catch (err: any) {
-        alert(`Errore durante l'eliminazione: ${err.message}`);
+        notify('error', 'Errore', `Impossibile eliminare: ${err.message}`);
       }
     }
   };
 
   return (
     <div>
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Condomini</h1>
           <p className="text-sm text-gray-500 mt-1">Gestisci il tuo portafoglio immobiliare</p>
         </div>
-        <button 
-          onClick={() => handleOpenModal()}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow-sm transition-all whitespace-nowrap"
-        >
-          <PlusIcon className="h-5 w-5" />
-          Aggiungi Condominio
-        </button>
+        
+        {canCreateCondominio && (
+          <button 
+            onClick={() => handleOpenModal()}
+            className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2 shadow-sm transition-all whitespace-nowrap"
+          >
+            <PlusIcon className="h-5 w-5" />
+            Aggiungi Condominio
+          </button>
+        )}
       </div>
 
       {/* Toolbar Filtri e Ordinamento */}
@@ -97,7 +107,7 @@ export const CondominiList: React.FC = () => {
         <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-6 flex flex-col sm:flex-row gap-4 items-center">
           <div className="flex items-center gap-2 w-full sm:w-auto">
             <FunnelIcon className="h-5 w-5 text-gray-400" />
-            <span className="text-sm font-medium text-gray-700">Filtra per:</span>
+            <span className="text-sm font-medium text-gray-700 whitespace-nowrap">Filtra per:</span>
             <select 
               value={filterCity}
               onChange={(e) => setFilterCity(e.target.value)}
@@ -110,18 +120,18 @@ export const CondominiList: React.FC = () => {
             </select>
           </div>
 
-          <div className="h-6 w-px bg-gray-200 hidden sm:block"></div>
+          <div className="h-px w-full bg-gray-200 sm:h-6 sm:w-px sm:block"></div>
 
           <button 
             onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
-            className="flex items-center gap-2 text-sm text-gray-600 hover:text-indigo-600 font-medium transition-colors w-full sm:w-auto"
+            className="flex items-center justify-center gap-2 text-sm text-gray-600 hover:text-indigo-600 font-medium transition-colors w-full sm:w-auto"
           >
             <ArrowsUpDownIcon className="h-4 w-4" />
-            Ordina per Nome ({sortOrder === 'asc' ? 'A-Z' : 'Z-A'})
+            Ordina ({sortOrder === 'asc' ? 'A-Z' : 'Z-A'})
           </button>
           
-          <div className="flex-1 text-right text-xs text-gray-400 hidden sm:block">
-            Mostrati {processedItems.length} di {condomini.length} condomini
+          <div className="flex-1 text-center sm:text-right text-xs text-gray-400 w-full sm:w-auto">
+            {processedItems.length} risultati
           </div>
         </div>
       )}
@@ -134,23 +144,29 @@ export const CondominiList: React.FC = () => {
                  <HomeModernIcon className="h-8 w-8 text-indigo-600" />
               </div>
               
-              {/* Action Buttons Overlay */}
-              <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button 
-                  onClick={() => handleOpenModal(condo)}
-                  className="p-2 bg-white/20 backdrop-blur-sm rounded-full hover:bg-white/40 text-white transition-colors"
-                  title="Modifica Condominio"
-                >
-                  <PencilSquareIcon className="h-5 w-5" />
-                </button>
-                <button 
-                  onClick={() => handleDelete(condo.id)}
-                  className="p-2 bg-white/20 backdrop-blur-sm rounded-full hover:bg-red-500/80 text-white transition-colors"
-                  title="Elimina Condominio"
-                >
-                  <TrashIcon className="h-5 w-5" />
-                </button>
-              </div>
+              {/* Action Buttons Overlay - Visibili solo a chi ha permessi */}
+              {(canEditCondominio || canDeleteCondominio) && (
+                <div className="absolute top-4 right-4 flex gap-2 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                  {canEditCondominio && (
+                    <button 
+                      onClick={() => handleOpenModal(condo)}
+                      className="p-2 bg-white/20 backdrop-blur-sm rounded-full hover:bg-white/40 text-white transition-colors"
+                      title="Modifica Condominio"
+                    >
+                      <PencilSquareIcon className="h-5 w-5" />
+                    </button>
+                  )}
+                  {canDeleteCondominio && (
+                    <button 
+                      onClick={() => handleDelete(condo.id)}
+                      className="p-2 bg-white/20 backdrop-blur-sm rounded-full hover:bg-red-500/80 text-white transition-colors"
+                      title="Elimina Condominio"
+                    >
+                      <TrashIcon className="h-5 w-5" />
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
             <div className="pt-8 p-6">
               <h3 className="text-lg font-bold text-gray-900">{condo.nome}</h3>
@@ -174,14 +190,16 @@ export const CondominiList: React.FC = () => {
         
         {condomini.length === 0 && (
           <div className="col-span-full text-center py-12 text-gray-500 bg-white rounded-xl border border-dashed border-gray-300">
-            Nessun condominio trovato. Clicca su "Aggiungi Condominio" per crearne uno.
+            {canCreateCondominio ? 
+              'Nessun condominio trovato. Clicca su "Aggiungi Condominio" per crearne uno.' : 
+              'Nessun condominio disponibile.'}
           </div>
         )}
       </div>
 
       {/* Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl p-6 w-full max-w-lg shadow-2xl transform transition-all">
             <h2 className="text-2xl font-bold mb-6 text-gray-800 border-b pb-4">
               {editingCondo ? 'Modifica Condominio' : 'Nuovo Condominio'}

@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { DataProvider, useData } from './context/DataContext';
+import { NotificationProvider } from './context/NotificationContext';
+import { usePermissions } from './hooks/usePermissions';
 import { Layout } from './components/Layout';
 import { Dashboard } from './pages/Dashboard';
 import { CondominiList } from './pages/CondominiList';
@@ -14,8 +16,9 @@ import { ViewState } from './types';
 import { CloudArrowDownIcon } from '@heroicons/react/24/outline';
 
 const AppContent = () => {
-  const { isAuthenticated, user, isLoading: authLoading } = useAuth();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const { loading: dataLoading, error: dataError, refreshData } = useData();
+  const { canAccessView } = usePermissions();
   const [currentView, setCurrentView] = useState<ViewState>('dashboard');
 
   // 1. Auth Loading State
@@ -73,12 +76,10 @@ const AppContent = () => {
     );
   }
 
-  // 5. Main Application
+  // 5. Main Application Routing
   const renderView = () => {
-    const isAdmin = user?.role === 'admin';
-    
-    if (!isAdmin && (currentView === 'condomini' || currentView === 'immobili' || currentView === 'anagrafiche')) {
-      setCurrentView('dashboard');
+    // Se l'utente non ha i permessi per la vista corrente, lo riportiamo alla dashboard
+    if (!canAccessView(currentView)) {
       return <Dashboard onViewChange={setCurrentView} />;
     }
 
@@ -111,10 +112,12 @@ const AppContent = () => {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <DataProvider>
-        <AppContent />
-      </DataProvider>
-    </AuthProvider>
+    <NotificationProvider>
+      <AuthProvider>
+        <DataProvider>
+          <AppContent />
+        </DataProvider>
+      </AuthProvider>
+    </NotificationProvider>
   );
 }

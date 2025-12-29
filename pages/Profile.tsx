@@ -1,63 +1,56 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useNotification } from '../context/NotificationContext';
 import { db } from '../services/storage';
 import { Anagrafica } from '../types';
-import { UserCircleIcon, KeyIcon, EnvelopeIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
+import { UserForm, UserFormData } from '../components/UserForm';
 
 export const Profile: React.FC = () => {
   const { user, logout } = useAuth();
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    password: '' // For residents, this maps to codice_fiscale
-  });
+  const { notify } = useNotification();
+  
   const [status, setStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
 
-  useEffect(() => {
-    if (user) {
-      setFormData({
-        name: user.name,
-        email: user.email,
-        password: ''
-      });
-    }
-  }, [user]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSave = async (data: UserFormData) => {
+    if (!user) return;
+    
     setStatus('saving');
     setErrorMsg('');
 
     try {
-      if (user?.role === 'admin') {
+      if (user.role === 'admin') {
         // Mock update for admin (since admin is hardcoded in auth.ts)
         await new Promise(resolve => setTimeout(resolve, 1000));
         setStatus('success');
+        notify('success', 'Profilo Aggiornato', 'Le modifiche al profilo Admin sono state salvate.');
       } else {
         // For normal users, we update the 'anagrafiche' table
         const people = await db.select<Anagrafica>('anagrafiche');
-        const currentUserRecord = people.find(p => p.email === user?.email); // Match by original email
+        const currentUserRecord = people.find(p => p.email === user.email); // Match by original email
 
         if (currentUserRecord) {
           const updates: Partial<Anagrafica> = {
-            nome: formData.name,
-            email: formData.email
+            nome: data.name,
+            email: data.email
           };
           
           // If password field is used, we update codice_fiscale (as per auth.ts logic)
-          if (formData.password.trim()) {
-            updates.codice_fiscale = formData.password.trim();
+          if (data.password.trim()) {
+            updates.codice_fiscale = data.password.trim();
           }
 
           await db.update<Anagrafica>('anagrafiche', currentUserRecord.id, updates);
           
           // Important: Force logout if email/password changed as credentials are now different
-          if (formData.password || formData.email !== user?.email) {
-            alert('Hai modificato le credenziali. Effettua nuovamente l\'accesso.');
+          if (data.password || data.email !== user.email) {
+            notify('warning', 'Credenziali Modificate', 'Hai modificato le credenziali. Effettua nuovamente l\'accesso.');
             logout();
           } else {
              setStatus('success');
+             notify('success', 'Profilo Aggiornato', 'Le informazioni del profilo sono state aggiornate.');
+             // Reset status after a delay to allow further edits without "success" message stuck
+             setTimeout(() => setStatus('idle'), 3000);
           }
         } else {
           throw new Error('Record utente non trovato nel database.');
@@ -67,6 +60,7 @@ export const Profile: React.FC = () => {
       console.error(err);
       setStatus('error');
       setErrorMsg(err.message || 'Errore durante l\'aggiornamento.');
+      notify('error', 'Errore Aggiornamento', err.message || 'Si è verificato un errore.');
     }
   };
 
@@ -86,90 +80,13 @@ export const Profile: React.FC = () => {
         </div>
 
         <div className="p-8">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid grid-cols-1 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
-                  <UserCircleIcon className="h-4 w-4 mr-2 text-gray-400" />
-                  Nome Completo
-                </label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={e => setFormData(prev => ({...prev, name: e.target.value}))}
-                  className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
-                  <EnvelopeIcon className="h-4 w-4 mr-2 text-gray-400" />
-                  Indirizzo Email (Username)
-                </label>
-                <input
-                  type="email"
-                  value={formData.email}
-                  onChange={e => setFormData(prev => ({...prev, email: e.target.value}))}
-                  className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Nota: Se modifichi l'email, dovrai effettuare nuovamente l'accesso.
-                </p>
-              </div>
-
-              <div className="pt-4 border-t border-gray-100">
-                 <h3 className="text-md font-semibold text-gray-900 mb-4">Sicurezza</h3>
-                 
-                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
-                    <KeyIcon className="h-4 w-4 mr-2 text-gray-400" />
-                    {user.role === 'admin' ? 'Nuova Password' : 'Nuovo Codice Fiscale (Password)'}
-                  </label>
-                  <input
-                    type="password"
-                    placeholder="Lascia vuoto per mantenere quella attuale"
-                    value={formData.password}
-                    onChange={e => setFormData(prev => ({...prev, password: e.target.value}))}
-                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                  />
-                  {user.role !== 'admin' && (
-                    <p className="text-xs text-gray-500 mt-1">
-                      Per i residenti, il Codice Fiscale viene utilizzato come password di accesso.
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between pt-6">
-               <div className="flex items-center">
-                 {status === 'success' && (
-                   <span className="text-green-600 flex items-center text-sm font-medium animate-pulse">
-                     <CheckCircleIcon className="h-5 w-5 mr-1" />
-                     Profilo aggiornato con successo!
-                   </span>
-                 )}
-                 {status === 'error' && (
-                   <span className="text-red-600 text-sm font-medium">
-                     {errorMsg}
-                   </span>
-                 )}
-               </div>
-
-               <button
-                 type="submit"
-                 disabled={status === 'saving'}
-                 className="bg-indigo-600 text-white px-6 py-2.5 rounded-lg hover:bg-indigo-700 font-medium shadow-sm transition-all disabled:opacity-70 flex items-center"
-               >
-                 {status === 'saving' ? (
-                   <>
-                     <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
-                     Salvataggio...
-                   </>
-                 ) : 'Salva Modifiche'}
-               </button>
-            </div>
-          </form>
+          <UserForm 
+            initialData={{ name: user.name, email: user.email }}
+            role={user.role}
+            onSubmit={handleSave}
+            status={status}
+            errorMessage={errorMsg}
+          />
         </div>
       </div>
     </div>

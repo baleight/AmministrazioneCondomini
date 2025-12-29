@@ -1,6 +1,7 @@
-import React, { ReactNode } from 'react';
+import React, { ReactNode, useState } from 'react';
 import { ViewState } from '../types';
 import { useAuth } from '../context/AuthContext';
+import { usePermissions } from '../hooks/usePermissions';
 import { isMock } from '../services/storage';
 import { 
   BuildingOffice2Icon, 
@@ -12,7 +13,9 @@ import {
   ArrowRightOnRectangleIcon,
   UserCircleIcon,
   CloudIcon,
-  ServerIcon
+  ServerIcon,
+  Bars3Icon,
+  XMarkIcon
 } from '@heroicons/react/24/outline';
 
 interface LayoutProps {
@@ -23,19 +26,21 @@ interface LayoutProps {
 
 export const Layout: React.FC<LayoutProps> = ({ children, currentView, onViewChange }) => {
   const { user, logout } = useAuth();
-  const isAdmin = user?.role === 'admin';
+  const { canAccessView, role } = usePermissions();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // Define menus with role access
-  const allMenuItems: { id: ViewState; label: string; icon: any; adminOnly: boolean }[] = [
-    { id: 'dashboard', label: 'Dashboard', icon: HomeIcon, adminOnly: false },
-    { id: 'condomini', label: 'Condomini', icon: BuildingOffice2Icon, adminOnly: true },
-    { id: 'immobili', label: 'Unità Immobiliari', icon: DocumentDuplicateIcon, adminOnly: true },
-    { id: 'anagrafiche', label: 'Anagrafiche', icon: UsersIcon, adminOnly: true },
-    { id: 'segnalazioni', label: 'Segnalazioni', icon: WrenchScrewdriverIcon, adminOnly: false },
-    { id: 'comunicazioni', label: 'Comunicazioni', icon: MegaphoneIcon, adminOnly: false },
+  // Define menus with role access checks handled by usePermissions
+  const allMenuItems: { id: ViewState; label: string; icon: any }[] = [
+    { id: 'dashboard', label: 'Dashboard', icon: HomeIcon },
+    { id: 'condomini', label: 'Condomini', icon: BuildingOffice2Icon },
+    { id: 'immobili', label: 'Unità Immobiliari', icon: DocumentDuplicateIcon },
+    { id: 'anagrafiche', label: 'Anagrafiche', icon: UsersIcon },
+    { id: 'segnalazioni', label: 'Segnalazioni', icon: WrenchScrewdriverIcon },
+    { id: 'comunicazioni', label: 'Comunicazioni', icon: MegaphoneIcon },
   ];
 
-  const visibleMenuItems = allMenuItems.filter(item => isAdmin || !item.adminOnly);
+  // Filter items based on permissions
+  const visibleMenuItems = allMenuItems.filter(item => canAccessView(item.id));
 
   // Helper to translate view titles in header
   const getTitle = (view: ViewState) => {
@@ -51,22 +56,59 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, onViewCha
     }
   };
 
+  const handleViewChange = (view: ViewState) => {
+    onViewChange(view);
+    setIsMobileMenuOpen(false); // Close mobile menu on navigation
+  };
+
+  const getRoleBadgeColor = () => {
+    switch(role) {
+      case 'admin': return 'bg-indigo-500';
+      case 'manager': return 'bg-purple-500';
+      default: return 'bg-green-600';
+    }
+  };
+
   return (
-    <div className="flex h-screen bg-gray-50 font-sans">
+    <div className="flex h-screen bg-gray-50 font-sans overflow-hidden">
+      
+      {/* Mobile Overlay */}
+      {isMobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-gray-900/50 z-20 md:hidden backdrop-blur-sm transition-opacity"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className="w-64 bg-slate-900 text-white flex flex-col shadow-xl z-20">
-        <div className="p-6 border-b border-slate-700 flex items-center space-x-3">
-          <div className="h-8 w-8 bg-indigo-500 rounded-lg flex items-center justify-center">
-            <BuildingOffice2Icon className="h-5 w-5 text-white" />
+      <aside 
+        className={`
+          fixed inset-y-0 left-0 z-30 w-64 bg-slate-900 text-white flex flex-col shadow-xl transition-transform duration-300 ease-in-out
+          md:relative md:translate-x-0
+          ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
+        `}
+      >
+        <div className="p-6 border-b border-slate-700 flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="h-8 w-8 bg-indigo-500 rounded-lg flex items-center justify-center">
+              <BuildingOffice2Icon className="h-5 w-5 text-white" />
+            </div>
+            <h1 className="text-xl font-bold tracking-tight">Kondo</h1>
           </div>
-          <h1 className="text-xl font-bold tracking-tight">KondoManager</h1>
+          {/* Mobile Close Button inside Sidebar */}
+          <button 
+            onClick={() => setIsMobileMenuOpen(false)} 
+            className="md:hidden text-slate-400 hover:text-white"
+          >
+            <XMarkIcon className="h-6 w-6" />
+          </button>
         </div>
 
         <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
           {visibleMenuItems.map((item) => (
             <button
               key={item.id}
-              onClick={() => onViewChange(item.id)}
+              onClick={() => handleViewChange(item.id)}
               className={`w-full flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-colors duration-150 ${
                 currentView === item.id
                   ? 'bg-indigo-600 text-white shadow-md'
@@ -81,7 +123,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, onViewCha
 
         <div className="p-4 border-t border-slate-700">
           <button 
-            onClick={() => onViewChange('profile')}
+            onClick={() => handleViewChange('profile')}
             className={`flex items-center w-full px-3 py-2 text-sm font-medium rounded-lg transition-colors mb-2 ${
                 currentView === 'profile' ? 'bg-indigo-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'
             }`}
@@ -97,41 +139,52 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, onViewCha
             Disconnetti
           </button>
           <div className="mt-2 pt-4 border-t border-slate-700 flex items-center px-3">
-            <div className={`h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold ${isAdmin ? 'bg-indigo-500' : 'bg-green-600'}`}>
+            <div className={`h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold ${getRoleBadgeColor()}`}>
               {user?.name.charAt(0).toUpperCase()}{user?.name.charAt(1).toUpperCase()}
             </div>
             <div className="ml-3 overflow-hidden">
               <p className="text-sm font-medium text-white truncate" title={user?.name}>{user?.name}</p>
-              <p className="text-xs text-slate-400 capitalize">{isAdmin ? 'Amministratore' : 'Residente'}</p>
+              <p className="text-xs text-slate-400 capitalize">{role}</p>
             </div>
           </div>
         </div>
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col overflow-hidden">
+      <main className="flex-1 flex flex-col overflow-hidden w-full">
         {/* Top Header */}
-        <header className="bg-white shadow-sm border-b border-gray-200 h-16 flex items-center justify-between px-8 z-10">
-          <h2 className="text-lg font-semibold text-gray-800 capitalize">
-            {getTitle(currentView)}
-          </h2>
+        <header className="bg-white shadow-sm border-b border-gray-200 h-16 flex items-center justify-between px-4 md:px-8 z-10 shrink-0">
+          <div className="flex items-center gap-3">
+            {/* Mobile Toggle Button */}
+            <button 
+              onClick={() => setIsMobileMenuOpen(true)}
+              className="md:hidden -ml-2 p-2 text-gray-500 hover:bg-gray-100 rounded-md"
+            >
+              <Bars3Icon className="h-6 w-6" />
+            </button>
+            <h2 className="text-lg font-semibold text-gray-800 capitalize truncate">
+              {getTitle(currentView)}
+            </h2>
+          </div>
+          
           <div className="flex items-center space-x-4">
              {isMock ? (
-               <span className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200 font-medium" title="I dati sono salvati solo nel browser. Modifica services/storage.ts per collegare Google Sheets.">
+               <span className="flex items-center gap-1.5 text-xs px-2 py-1 md:px-3 md:py-1.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200 font-medium" title="I dati sono salvati solo nel browser.">
                   <ServerIcon className="h-3.5 w-3.5" />
-                  Salvataggio Locale (Mock)
+                  <span className="hidden md:inline">Salvataggio Locale</span>
+                  <span className="md:hidden">Mock</span>
                </span>
              ) : (
-               <span className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full bg-green-50 text-green-700 border border-green-200 font-medium animate-pulse-once">
+               <span className="flex items-center gap-1.5 text-xs px-2 py-1 md:px-3 md:py-1.5 rounded-full bg-green-50 text-green-700 border border-green-200 font-medium animate-pulse-once">
                   <CloudIcon className="h-3.5 w-3.5" />
-                  Connesso a Google Sheets
+                  <span className="hidden md:inline">Online</span>
                </span>
              )}
           </div>
         </header>
 
         {/* Scrollable Content Area */}
-        <div className="flex-1 overflow-auto p-8">
+        <div className="flex-1 overflow-auto p-4 md:p-8 w-full">
           <div className="max-w-7xl mx-auto">
             {children}
           </div>
