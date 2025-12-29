@@ -34,15 +34,33 @@ export const SegnalazioniList: React.FC = () => {
     }
   };
 
+  const translatePriority = (p: string) => {
+    switch (p) {
+        case 'high': return 'Alta';
+        case 'medium': return 'Media';
+        case 'low': return 'Bassa';
+        default: return p;
+    }
+  };
+
+  const translateStatus = (s: string) => {
+      switch (s) {
+          case 'open': return 'Aperto';
+          case 'in_progress': return 'In Corso';
+          case 'resolved': return 'Risolto';
+          default: return s;
+      }
+  };
+
   return (
     <div className="max-w-5xl mx-auto">
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Maintenance Tickets</h1>
-          <p className="text-sm text-gray-500 mt-1">Track and resolve building issues</p>
+          <h1 className="text-2xl font-bold text-gray-900">Segnalazioni Manutenzione</h1>
+          <p className="text-sm text-gray-500 mt-1">Monitora e risolvi i problemi degli edifici</p>
         </div>
         <button className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium">
-          New Ticket
+          Nuova Segnalazione
         </button>
       </div>
 
@@ -54,7 +72,7 @@ export const SegnalazioniList: React.FC = () => {
                 <div className="flex items-center gap-3 mb-2">
                   <h3 className="text-lg font-bold text-gray-900">{ticket.title}</h3>
                   <span className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset ${getPriorityColor(ticket.priority)}`}>
-                    {ticket.priority}
+                    {translatePriority(ticket.priority)}
                   </span>
                   <span className="text-xs text-gray-400 flex items-center">
                     <ClockIcon className="h-3 w-3 mr-1" />
@@ -67,11 +85,11 @@ export const SegnalazioniList: React.FC = () => {
               <div className="flex items-center">
                 {ticket.status === 'resolved' ? (
                   <span className="flex items-center text-green-600 text-sm font-medium bg-green-50 px-3 py-1 rounded-full">
-                    <CheckCircleIcon className="h-4 w-4 mr-1" /> Resolved
+                    <CheckCircleIcon className="h-4 w-4 mr-1" /> Risolto
                   </span>
                 ) : (
                   <span className="text-gray-500 text-sm bg-gray-100 px-3 py-1 rounded-full">
-                    {ticket.status}
+                    {translateStatus(ticket.status)}
                   </span>
                 )}
               </div>
@@ -83,7 +101,7 @@ export const SegnalazioniList: React.FC = () => {
                 <div className="bg-purple-50 rounded-lg p-4 border border-purple-100">
                   <div className="flex items-center gap-2 mb-2">
                      <SparklesIcon className="h-5 w-5 text-purple-600" />
-                     <h4 className="text-sm font-bold text-purple-900">Gemini Analysis</h4>
+                     <h4 className="text-sm font-bold text-purple-900">Analisi Gemini</h4>
                   </div>
                   <p className="text-sm text-purple-800 whitespace-pre-wrap leading-relaxed">
                     {ticket.ai_analysis}
@@ -98,12 +116,12 @@ export const SegnalazioniList: React.FC = () => {
                   {analyzingId === ticket.id ? (
                     <>
                       <div className="animate-spin h-4 w-4 border-2 border-indigo-600 border-t-transparent rounded-full"></div>
-                      Analyzing with Gemini...
+                      Analisi con Gemini in corso...
                     </>
                   ) : (
                     <>
                       <SparklesIcon className="h-4 w-4" />
-                      Analyze Priority & Suggest Action
+                      Analizza Priorità & Suggerisci Azione
                     </>
                   )}
                 </button>

@@ -1,30 +1,82 @@
-import { Condominio, Anagrafica, Segnalazione, Comunicazione, Immobile } from '../types';
+import CryptoJS from 'crypto-js';
 
-// Initial Seed Data
-const INITIAL_CONDOMINI: Condominio[] = [
-  { id: 1, nome: 'Residenza Parco Vittoria', indirizzo: 'Via Roma 10', city: 'Milano', email: 'parcovittoria@kondo.it', codice_fiscale: '80012345678', units_count: 24 },
-  { id: 2, nome: 'Torre del Sole', indirizzo: 'Corso Italia 45', city: 'Torino', email: 'torresole@kondo.it', codice_fiscale: '90087654321', units_count: 56 },
-];
+// ==========================================
+// CONFIGURATION
+// ==========================================
+// Paste your deployed Web App URL here. 
+// If empty, the app will fall back to Mock (Browser LocalStorage) mode.
+const GOOGLE_SCRIPT_URL = ""; 
+// Example: "https://script.google.com/macros/s/AKfycbx.../exec"
 
-const INITIAL_ANAGRAFICHE: Anagrafica[] = [
-  { id: 1, nome: 'Mario Rossi', email: 'mario.rossi@email.com', telefono: '+39 333 1234567', codice_fiscale: 'RSSMRA80A01H501U', role: 'owner' },
-  { id: 2, nome: 'Giulia Bianchi', email: 'giulia.b@email.com', telefono: '+39 333 9876543', codice_fiscale: 'BNCGLI85B45H501Z', role: 'tenant' },
-];
+const ENCRYPTION_KEY = "kondo-manager-secure-key-2025"; // In a production app, use an environment variable
 
-const INITIAL_SEGNALAZIONI: Segnalazione[] = [
-  { id: 1, condominio_id: 1, title: 'Ascensore bloccato', description: 'L\'ascensore della scala B è fermo al secondo piano.', status: 'open', priority: 'high', created_at: new Date().toISOString() },
-  { id: 2, condominio_id: 1, title: 'Lampadina ingresso bruciata', description: 'Richiesta sostituzione faretto led ingresso principale.', status: 'resolved', priority: 'low', created_at: new Date(Date.now() - 86400000).toISOString() },
-];
+// ==========================================
+// ENCRYPTION HELPERS
+// ==========================================
 
-const INITIAL_IMMOBILI: Immobile[] = [
-  { id: 1, condominio_id: 1, nome: 'Appartamento 1A', piano: '1', superficie: 85, owner_id: 1 },
-  { id: 2, condominio_id: 1, nome: 'Appartamento 1B', piano: '1', superficie: 90, tenant_id: 2 },
-];
+const encryptValue = (value: any): string => {
+  if (value === undefined || value === null) return "";
+  try {
+    // JSON.stringify ensures we preserve types (numbers vs strings) upon decryption
+    return CryptoJS.AES.encrypt(JSON.stringify(value), ENCRYPTION_KEY).toString();
+  } catch (e) {
+    console.error("Encryption failed", e);
+    return String(value);
+  }
+};
 
-// Helper to simulate async DB calls
+const decryptValue = (ciphertext: string): any => {
+  if (!ciphertext || typeof ciphertext !== 'string') return ciphertext;
+  try {
+    const bytes = CryptoJS.AES.decrypt(ciphertext, ENCRYPTION_KEY);
+    const originalText = bytes.toString(CryptoJS.enc.Utf8);
+    if (!originalText) return ciphertext; // Return original if empty (might be plain text)
+    return JSON.parse(originalText);
+  } catch (e) {
+    // Fallback: If decryption fails, it might be legacy plain text data
+    return ciphertext;
+  }
+};
+
+const encryptRow = (row: any) => {
+  const encrypted: any = {};
+  Object.keys(row).forEach(key => {
+    // Never encrypt ID as it is required for DB lookups
+    if (key === 'id') {
+      encrypted[key] = row[key];
+    } else {
+      encrypted[key] = encryptValue(row[key]);
+    }
+  });
+  return encrypted;
+};
+
+const decryptRow = (row: any) => {
+  const decrypted: any = {};
+  Object.keys(row).forEach(key => {
+    if (key === 'id') {
+      decrypted[key] = row[key];
+    } else {
+      decrypted[key] = decryptValue(row[key]);
+    }
+  });
+  return decrypted;
+};
+
+// Interface for DB drivers
+interface IDatabase {
+  select<T>(table: string): Promise<T[]>;
+  insert<T extends { id: number }>(table: string, item: Omit<T, 'id'>): Promise<T>;
+  update<T extends { id: number }>(table: string, id: number, updates: Partial<T>): Promise<T>;
+  delete(table: string, id: number): Promise<void>;
+}
+
+// ==========================================
+// MOCK STORAGE (LocalStorage)
+// ==========================================
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-class MockSheetDB {
+class MockSheetDB implements IDatabase {
   private get<T>(key: string, initial: T): T {
     const stored = localStorage.getItem(`kondo_${key}`);
     if (!stored) {
@@ -38,15 +90,10 @@ class MockSheetDB {
     localStorage.setItem(`kondo_${key}`, JSON.stringify(data));
   }
 
-  // Generic methods
   async select<T>(table: string): Promise<T[]> {
-    await delay(300); // Simulate network latency
-    if (table === 'condomini') return this.get<T[]>(table, INITIAL_CONDOMINI as unknown as T[]);
-    if (table === 'anagrafiche') return this.get<T[]>(table, INITIAL_ANAGRAFICHE as unknown as T[]);
-    if (table === 'segnalazioni') return this.get<T[]>(table, INITIAL_SEGNALAZIONI as unknown as T[]);
-    if (table === 'immobili') return this.get<T[]>(table, INITIAL_IMMOBILI as unknown as T[]);
-    if (table === 'comunicazioni') return this.get<T[]>(table, [] as unknown as T[]);
-    return [];
+    await delay(300);
+    // Return empty array by default if no data exists
+    return this.get<T[]>(table, []);
   }
 
   async insert<T extends { id: number }>(table: string, item: Omit<T, 'id'>): Promise<T> {
@@ -77,4 +124,70 @@ class MockSheetDB {
   }
 }
 
-export const db = new MockSheetDB();
+// ==========================================
+// REAL GOOGLE SHEETS STORAGE (With Encryption)
+// ==========================================
+class GoogleSheetsDB implements IDatabase {
+  private baseUrl: string;
+
+  constructor(url: string) {
+    this.baseUrl = url;
+  }
+
+  async select<T>(table: string): Promise<T[]> {
+    const response = await fetch(`${this.baseUrl}?action=select&table=${table}`);
+    if (!response.ok) throw new Error('Network response was not ok');
+    const json = await response.json();
+    if (json.error) throw new Error(json.error);
+    
+    const data = json as T[];
+    // Decrypt data coming from sheets
+    return data.map(row => decryptRow(row));
+  }
+
+  async insert<T extends { id: number }>(table: string, item: Omit<T, 'id'>): Promise<T> {
+    // Encrypt data before sending
+    const encryptedItem = encryptRow(item);
+    
+    const response = await fetch(`${this.baseUrl}?action=insert&table=${table}`, {
+      method: 'POST',
+      body: JSON.stringify({ data: encryptedItem }),
+    });
+    
+    const data = await response.json();
+    if (data.error) throw new Error(data.error);
+    
+    // The server usually returns the created item including the new ID.
+    // If the server returns the data we sent (encrypted), we need to decrypt it 
+    // or merge the ID with our local clear text version. 
+    // Assuming server returns what was saved, we decrypt it.
+    return decryptRow(data) as T;
+  }
+
+  async update<T extends { id: number }>(table: string, id: number, updates: Partial<T>): Promise<T> {
+    // Encrypt updates before sending
+    const encryptedUpdates = encryptRow(updates);
+
+    const response = await fetch(`${this.baseUrl}?action=update&table=${table}&id=${id}`, {
+      method: 'POST',
+      body: JSON.stringify({ data: encryptedUpdates }),
+    });
+
+    const data = await response.json();
+    if (data.error) throw new Error(data.error);
+    
+    return decryptRow(data) as T;
+  }
+
+  async delete(table: string, id: number): Promise<void> {
+    const response = await fetch(`${this.baseUrl}?action=delete&table=${table}&id=${id}`, {
+      method: 'POST',
+    });
+    const data = await response.json();
+    if (data.error) throw new Error(data.error);
+  }
+}
+
+// Export the correct instance based on configuration
+export const isMock = !GOOGLE_SCRIPT_URL;
+export const db: IDatabase = isMock ? new MockSheetDB() : new GoogleSheetsDB(GOOGLE_SCRIPT_URL);

@@ -16,11 +16,17 @@ export const ComunicazioniList: React.FC = () => {
     setLoading(false);
   };
 
+  const toneLabels = {
+    formal: 'Formale',
+    friendly: 'Amichevole',
+    urgent: 'Urgente'
+  };
+
   return (
     <div className="max-w-4xl mx-auto">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Communications</h1>
-        <p className="text-sm text-gray-500 mt-1">Send announcements to residents</p>
+        <h1 className="text-2xl font-bold text-gray-900">Comunicazioni</h1>
+        <p className="text-sm text-gray-500 mt-1">Invia avvisi e comunicazioni ai residenti</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -28,22 +34,22 @@ export const ComunicazioniList: React.FC = () => {
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 h-fit">
           <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
             <SparklesIcon className="h-5 w-5 text-indigo-500" />
-            AI Draft Assistant
+            Assistente AI
           </h2>
           
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Topic / Key Points</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Argomento / Punti Chiave</label>
               <textarea 
                 className="w-full border rounded-lg p-3 h-32 focus:ring-2 focus:ring-indigo-500 outline-none resize-none"
-                placeholder="e.g., Elevator maintenance on Tuesday from 9 AM to 2 PM..."
+                placeholder="es. Manutenzione ascensore martedì dalle 9:00 alle 14:00..."
                 value={topic}
                 onChange={e => setTopic(e.target.value)}
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Tone</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Tono</label>
               <div className="flex gap-2">
                 {['formal', 'friendly', 'urgent'].map((t) => (
                   <button
@@ -55,7 +61,7 @@ export const ComunicazioniList: React.FC = () => {
                         : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
                     }`}
                   >
-                    {t}
+                    {toneLabels[t as keyof typeof toneLabels]}
                   </button>
                 ))}
               </div>
@@ -69,12 +75,12 @@ export const ComunicazioniList: React.FC = () => {
               {loading ? (
                 <>
                   <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
-                  Generating...
+                  Generazione in corso...
                 </>
               ) : (
                 <>
                   <SparklesIcon className="h-5 w-5" />
-                  Generate Draft with Gemini
+                  Genera Bozza con Gemini
                 </>
               )}
             </button>
@@ -86,18 +92,18 @@ export const ComunicazioniList: React.FC = () => {
           {draft ? (
             <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden ring-1 ring-black/5">
                <div className="bg-gray-50 px-6 py-4 border-b border-gray-100 flex justify-between items-center">
-                 <h3 className="font-semibold text-gray-900">Preview</h3>
+                 <h3 className="font-semibold text-gray-900">Anteprima</h3>
                  <button onClick={() => setDraft(null)} className="text-gray-400 hover:text-gray-600">
                    <XMarkIcon className="h-5 w-5" />
                  </button>
                </div>
                <div className="p-6">
                  <div className="mb-4">
-                   <span className="text-xs font-medium text-gray-400 uppercase tracking-wider">Subject</span>
+                   <span className="text-xs font-medium text-gray-400 uppercase tracking-wider">Oggetto</span>
                    <div className="text-lg font-bold text-gray-900 mt-1">{draft.title}</div>
                  </div>
                  <div>
-                   <span className="text-xs font-medium text-gray-400 uppercase tracking-wider">Message</span>
+                   <span className="text-xs font-medium text-gray-400 uppercase tracking-wider">Messaggio</span>
                    <div className="mt-2 text-gray-700 whitespace-pre-wrap leading-relaxed">
                      {draft.content}
                    </div>
@@ -106,14 +112,14 @@ export const ComunicazioniList: React.FC = () => {
                <div className="bg-gray-50 px-6 py-4 border-t border-gray-100">
                  <button className="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg font-medium flex items-center justify-center gap-2">
                    <PaperAirplaneIcon className="h-5 w-5" />
-                   Approve & Send
+                   Approva & Invia
                  </button>
                </div>
             </div>
           ) : (
             <div className="h-full min-h-[300px] border-2 border-dashed border-gray-200 rounded-xl flex flex-col items-center justify-center text-center p-8 text-gray-400">
                <SparklesIcon className="h-12 w-12 mb-4 text-gray-200" />
-               <p>Your AI-generated draft<br/>will appear here.</p>
+               <p>La tua bozza generata dall'IA<br/>apparirà qui.</p>
             </div>
           )}
         </div>

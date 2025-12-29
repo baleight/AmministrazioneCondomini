@@ -2,19 +2,27 @@ import React, { useEffect, useState } from 'react';
 import { db } from '../services/storage';
 import { Condominio } from '../types';
 import { CondominioForm } from '../components/CondominioForm';
-import { PlusIcon, MapPinIcon, HomeModernIcon, PencilSquareIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, MapPinIcon, HomeModernIcon, PencilSquareIcon, ExclamationCircleIcon } from '@heroicons/react/24/outline';
 
 export const CondominiList: React.FC = () => {
   const [items, setItems] = useState<Condominio[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCondo, setEditingCondo] = useState<Condominio | null>(null);
 
   const loadItems = async () => {
     setLoading(true);
-    const data = await db.select<Condominio>('condomini');
-    setItems(data);
-    setLoading(false);
+    setError(null);
+    try {
+      const data = await db.select<Condominio>('condomini');
+      setItems(data);
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || 'Impossibile caricare gli edifici. Controlla la connessione o la configurazione.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -27,29 +35,49 @@ export const CondominiList: React.FC = () => {
   };
 
   const handleSave = async (data: Omit<Condominio, 'id'>) => {
-    if (editingCondo) {
-      await db.update<Condominio>('condomini', editingCondo.id, data);
-    } else {
-      await db.insert<Condominio>('condomini', data);
+    try {
+      if (editingCondo) {
+        await db.update<Condominio>('condomini', editingCondo.id, data);
+      } else {
+        await db.insert<Condominio>('condomini', data);
+      }
+      setIsModalOpen(false);
+      setEditingCondo(null);
+      loadItems();
+    } catch (err: any) {
+      alert(`Errore durante il salvataggio: ${err.message}`);
     }
-    setIsModalOpen(false);
-    setEditingCondo(null);
-    loadItems();
   };
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-96 text-center">
+        <ExclamationCircleIcon className="h-16 w-16 text-red-400 mb-4" />
+        <h3 className="text-lg font-medium text-gray-900">Impossibile caricare i dati</h3>
+        <p className="text-gray-500 max-w-md mt-2 mb-6">{error}</p>
+        <button 
+          onClick={loadItems}
+          className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
+        >
+          Riprova
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Buildings</h1>
-          <p className="text-sm text-gray-500 mt-1">Manage your portfolio of condominiums</p>
+          <h1 className="text-2xl font-bold text-gray-900">Condomini</h1>
+          <p className="text-sm text-gray-500 mt-1">Gestisci il tuo portafoglio immobiliare</p>
         </div>
         <button 
           onClick={() => handleOpenModal()}
           className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow-sm transition-all"
         >
           <PlusIcon className="h-5 w-5" />
-          Add Building
+          Aggiungi Condominio
         </button>
       </div>
 
@@ -69,7 +97,7 @@ export const CondominiList: React.FC = () => {
                   <button 
                     onClick={() => handleOpenModal(condo)}
                     className="p-2 bg-white/20 backdrop-blur-sm rounded-full hover:bg-white/40 text-white transition-colors"
-                    title="Edit Building"
+                    title="Modifica Condominio"
                   >
                     <PencilSquareIcon className="h-5 w-5" />
                   </button>
@@ -83,7 +111,7 @@ export const CondominiList: React.FC = () => {
                 </div>
                 <div className="mt-4 pt-4 border-t border-gray-100 flex justify-between items-center">
                    <span className="text-xs font-semibold bg-gray-100 text-gray-600 px-2 py-1 rounded">
-                     {condo.units_count} Units
+                     {condo.units_count} Unità
                    </span>
                    <div className="flex gap-2">
                      <span className="text-xs text-gray-400 font-mono bg-gray-50 px-1 rounded">
@@ -94,6 +122,12 @@ export const CondominiList: React.FC = () => {
               </div>
             </div>
           ))}
+          
+          {items.length === 0 && (
+            <div className="col-span-full text-center py-12 text-gray-500 bg-white rounded-xl border border-dashed border-gray-300">
+              Nessun condominio trovato. Clicca su "Aggiungi Condominio" per crearne uno.
+            </div>
+          )}
         </div>
       )}
 
@@ -102,7 +136,7 @@ export const CondominiList: React.FC = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl p-6 w-full max-w-lg shadow-2xl transform transition-all">
             <h2 className="text-2xl font-bold mb-6 text-gray-800 border-b pb-4">
-              {editingCondo ? 'Edit Condominium' : 'Add New Condominium'}
+              {editingCondo ? 'Modifica Condominio' : 'Nuovo Condominio'}
             </h2>
             <CondominioForm 
               initialData={editingCondo}

@@ -66,10 +66,10 @@ export const UnitForm: React.FC<UnitFormProps> = ({ initialData, condomini, peop
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
-    if (!formData.condominio_id) newErrors.condominio_id = 'Building is required';
-    if (!formData.nome.trim()) newErrors.nome = 'Unit name is required';
-    if (!formData.piano.trim()) newErrors.piano = 'Floor is required';
-    if (formData.superficie <= 0) newErrors.superficie = 'Area must be greater than 0';
+    if (!formData.condominio_id) newErrors.condominio_id = 'Il condominio è obbligatorio';
+    if (!formData.nome.trim()) newErrors.nome = "Il nome dell'unità è obbligatorio";
+    if (!formData.piano.trim()) newErrors.piano = 'Il piano è obbligatorio';
+    if (formData.superficie <= 0) newErrors.superficie = 'La superficie deve essere maggiore di 0';
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -84,7 +84,7 @@ export const UnitForm: React.FC<UnitFormProps> = ({ initialData, condomini, peop
       await onSubmit(formData);
     } catch (err) {
       console.error(err);
-      setErrors(prev => ({ ...prev, form: 'An error occurred while saving.' }));
+      setErrors(prev => ({ ...prev, form: 'Si è verificato un errore durante il salvataggio.' }));
     } finally {
       setIsSubmitting(false);
     }
@@ -101,14 +101,14 @@ export const UnitForm: React.FC<UnitFormProps> = ({ initialData, condomini, peop
       )}
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Building</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Condominio</label>
         <select
           name="condominio_id"
           value={formData.condominio_id}
           onChange={handleChange}
           className={inputClass('condominio_id')}
         >
-          <option value={0} disabled>Select a building</option>
+          <option value={0} disabled>Seleziona un condominio</option>
           {condomini.map(c => (
             <option key={c.id} value={c.id}>{c.nome}</option>
           ))}
@@ -118,33 +118,33 @@ export const UnitForm: React.FC<UnitFormProps> = ({ initialData, condomini, peop
       
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Unit Name</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Nome Unità</label>
           <input 
             name="nome"
             type="text"
             value={formData.nome}
             onChange={handleChange}
             className={inputClass('nome')}
-            placeholder="e.g. Unit 1A"
+            placeholder="es. Interno 1A"
           />
           {errors.nome && <p className="text-red-500 text-xs mt-1">{errors.nome}</p>}
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Floor</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Piano</label>
           <input 
             name="piano"
             type="text"
             value={formData.piano}
             onChange={handleChange}
             className={inputClass('piano')}
-            placeholder="e.g. 1"
+            placeholder="es. 1"
           />
           {errors.piano && <p className="text-red-500 text-xs mt-1">{errors.piano}</p>}
         </div>
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Area (sqm)</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Superficie (mq)</label>
         <input 
           name="superficie"
           type="number"
@@ -158,28 +158,28 @@ export const UnitForm: React.FC<UnitFormProps> = ({ initialData, condomini, peop
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Owner</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Proprietario</label>
           <select
             name="owner_id"
             value={formData.owner_id || ''}
             onChange={handleChange}
             className={inputClass('owner_id')}
           >
-            <option value="">No Owner Assigned</option>
+            <option value="">Nessun proprietario</option>
             {people.filter(p => p.role === 'owner').map(p => (
               <option key={p.id} value={p.id}>{p.nome}</option>
             ))}
           </select>
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Tenant</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Inquilino</label>
           <select
             name="tenant_id"
             value={formData.tenant_id || ''}
             onChange={handleChange}
             className={inputClass('tenant_id')}
           >
-            <option value="">No Tenant Assigned</option>
+            <option value="">Nessun inquilino</option>
             {people.filter(p => p.role === 'tenant').map(p => (
               <option key={p.id} value={p.id}>{p.nome}</option>
             ))}
@@ -194,14 +194,14 @@ export const UnitForm: React.FC<UnitFormProps> = ({ initialData, condomini, peop
           className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
           disabled={isSubmitting}
         >
-          Cancel
+          Annulla
         </button>
         <button 
           type="submit"
           className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors disabled:opacity-70 flex items-center"
           disabled={isSubmitting}
         >
-          {isSubmitting ? 'Saving...' : 'Save Unit'}
+          {isSubmitting ? 'Salvataggio...' : 'Salva Unità'}
         </button>
       </div>
     </form>

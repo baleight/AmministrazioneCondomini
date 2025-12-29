@@ -50,22 +50,22 @@ export const ImmobiliList: React.FC = () => {
     loadData();
   };
 
-  const getCondoName = (id: number) => condomini.find(c => c.id === id)?.nome || 'Unknown Building';
-  const getPersonName = (id?: number) => people.find(p => p.id === id)?.nome || 'Vacant';
+  const getCondoName = (id: number) => condomini.find(c => c.id === id)?.nome || 'Edificio Sconosciuto';
+  const getPersonName = (id?: number) => people.find(p => p.id === id)?.nome || 'Libero';
 
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Units (Immobili)</h1>
-          <p className="text-sm text-gray-500 mt-1">Manage apartments, offices, and garages</p>
+          <h1 className="text-2xl font-bold text-gray-900">Unità Immobiliari</h1>
+          <p className="text-sm text-gray-500 mt-1">Gestisci appartamenti, uffici e box</p>
         </div>
         <button 
           onClick={() => handleOpenModal()}
           className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow-sm transition-all"
         >
           <PlusIcon className="h-5 w-5" />
-          Add Unit
+          Aggiungi Unità
         </button>
       </div>
 
@@ -98,23 +98,23 @@ export const ImmobiliList: React.FC = () => {
 
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between border-b border-gray-50 pb-2">
-                  <span className="text-gray-500">Floor</span>
+                  <span className="text-gray-500">Piano</span>
                   <span className="font-medium">{unit.piano}</span>
                 </div>
                 <div className="flex justify-between border-b border-gray-50 pb-2">
-                  <span className="text-gray-500">Area</span>
+                  <span className="text-gray-500">Superficie</span>
                   <span className="font-medium">{unit.superficie} m²</span>
                 </div>
                 
                 <div className="pt-2 flex flex-col gap-2">
                   <div className="flex items-center text-gray-600">
                     <KeyIcon className="h-4 w-4 mr-2 text-orange-400" />
-                    <span className="text-xs uppercase tracking-wider font-semibold text-gray-400 w-16">Owner:</span>
+                    <span className="text-xs uppercase tracking-wider font-semibold text-gray-400 w-24">Proprietario:</span>
                     <span className="font-medium truncate">{getPersonName(unit.owner_id)}</span>
                   </div>
                   <div className="flex items-center text-gray-600">
                     <UserIcon className="h-4 w-4 mr-2 text-indigo-400" />
-                    <span className="text-xs uppercase tracking-wider font-semibold text-gray-400 w-16">Tenant:</span>
+                    <span className="text-xs uppercase tracking-wider font-semibold text-gray-400 w-24">Inquilino:</span>
                     <span className="font-medium truncate">{getPersonName(unit.tenant_id)}</span>
                   </div>
                 </div>
@@ -124,7 +124,7 @@ export const ImmobiliList: React.FC = () => {
           
           {units.length === 0 && (
             <div className="col-span-full text-center py-12 text-gray-500 bg-white rounded-xl border border-dashed border-gray-300">
-              No units found. Click "Add Unit" to create one.
+              Nessuna unità trovata. Clicca su "Aggiungi Unità" per crearne una.
             </div>
           )}
         </div>
@@ -135,7 +135,7 @@ export const ImmobiliList: React.FC = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl p-6 w-full max-w-lg shadow-2xl transform transition-all">
             <h2 className="text-2xl font-bold mb-6 text-gray-800 border-b pb-4">
-              {editingUnit ? 'Edit Unit' : 'Add New Unit'}
+              {editingUnit ? 'Modifica Unità' : 'Nuova Unità'}
             </h2>
             <UnitForm 
               initialData={editingUnit}

@@ -18,8 +18,8 @@ export const AnagraficheList: React.FC = () => {
     <div>
        <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">People Directory</h1>
-          <p className="text-sm text-gray-500 mt-1">Owners, tenants, and contacts</p>
+          <h1 className="text-2xl font-bold text-gray-900">Elenco Anagrafiche</h1>
+          <p className="text-sm text-gray-500 mt-1">Proprietari, inquilini e contatti</p>
         </div>
       </div>
 
@@ -27,15 +27,15 @@ export const AnagraficheList: React.FC = () => {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tax ID</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contatti</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ruolo</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Codice Fiscale</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {loading ? (
-              <tr><td colSpan={4} className="p-6 text-center">Loading...</td></tr>
+              <tr><td colSpan={4} className="p-6 text-center">Caricamento...</td></tr>
             ) : people.map((person) => (
               <tr key={person.id} className="hover:bg-gray-50">
                 <td className="px-6 py-4 whitespace-nowrap">
@@ -60,7 +60,7 @@ export const AnagraficheList: React.FC = () => {
                   <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                     person.role === 'owner' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
                   }`}>
-                    {person.role}
+                    {person.role === 'owner' ? 'Proprietario' : person.role === 'tenant' ? 'Inquilino' : person.role}
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">

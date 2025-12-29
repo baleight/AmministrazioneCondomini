@@ -1,5 +1,5 @@
 {
   "name": "KondoManager React",
-  "description": "A comprehensive condominium management system featuring building, unit, and tenant management with AI-powered assistance for communications and maintenance analysis.",
+  "description": "Un sistema completo per la gestione condominiale che include gestione di edifici, unità immobiliari e inquilini, con assistenza IA per comunicazioni e analisi della manutenzione.",
   "requestFramePermissions": []
 }

@@ -11,42 +11,42 @@ const getClient = () => {
 
 export const analyzeTicket = async (title: string, description: string): Promise<string> => {
   const ai = getClient();
-  if (!ai) return "AI Configuration Missing: Please set API_KEY.";
+  if (!ai) return "Configurazione IA mancante: Imposta API_KEY.";
 
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: `You are an expert facility manager. Analyze this maintenance ticket.
+      contents: `Sei un esperto gestore di condomini. Analizza questa segnalazione di manutenzione.
       
-      Ticket Title: ${title}
-      Description: ${description}
+      Titolo Segnalazione: ${title}
+      Descrizione: ${description}
       
-      Please provide a brief, structured analysis including:
-      1. Estimated Priority (Low/Medium/High/Emergency)
-      2. Recommended Professional (e.g., Electrician, Plumber)
-      3. A suggested polite response to the tenant.
+      Fornisci una breve analisi strutturata in ITALIANO includendo:
+      1. Priorità stimata (Bassa/Media/Alta/Emergenza)
+      2. Professionista consigliato (es. Elettricista, Idraulico)
+      3. Una risposta cortese suggerita da inviare all'inquilino.
       
-      Keep the output concise (under 150 words).`,
+      Mantieni l'output conciso (sotto le 150 parole).`,
     });
-    return response.text || "No analysis available.";
+    return response.text || "Nessuna analisi disponibile.";
   } catch (error) {
     console.error("Gemini Error:", error);
-    return "Failed to analyze ticket. Please check your network or API key.";
+    return "Impossibile analizzare la segnalazione. Controlla la rete o la chiave API.";
   }
 };
 
 export const draftCommunication = async (topic: string, tone: 'formal' | 'friendly' | 'urgent'): Promise<{ title: string, content: string }> => {
   const ai = getClient();
-  if (!ai) return { title: "Error", content: "AI Configuration Missing." };
+  if (!ai) return { title: "Errore", content: "Configurazione IA mancante." };
 
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: `Write a condominium announcement about: "${topic}".
-      Tone: ${tone}.
+      contents: `Scrivi un avviso condominiale in ITALIANO riguardante: "${topic}".
+      Tono: ${tone}.
       
-      Return the result in JSON format with keys "title" and "content".
-      The content should be clear, professional, and ready to send.`,
+      Restituisci il risultato in formato JSON con le chiavi "title" e "content".
+      Il contenuto deve essere chiaro, professionale e pronto per essere inviato.`,
       config: {
         responseMimeType: "application/json"
       }
@@ -57,6 +57,6 @@ export const draftCommunication = async (topic: string, tone: 'formal' | 'friend
     return JSON.parse(text);
   } catch (error) {
     console.error("Gemini Error:", error);
-    return { title: "Drafting Failed", content: "Could not generate draft." };
+    return { title: "Creazione Fallita", content: "Impossibile generare la bozza." };
   }
 };
