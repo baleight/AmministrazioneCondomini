@@ -10,7 +10,9 @@ import {
   HomeIcon,
   DocumentDuplicateIcon,
   ArrowRightOnRectangleIcon,
-  UserCircleIcon
+  UserCircleIcon,
+  CloudIcon,
+  ServerIcon
 } from '@heroicons/react/24/outline';
 
 interface LayoutProps {
@@ -114,9 +116,17 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, onViewCha
             {getTitle(currentView)}
           </h2>
           <div className="flex items-center space-x-4">
-             <span className={`text-xs px-2 py-1 rounded border ${isMock ? 'bg-gray-100 text-gray-500' : 'bg-green-50 text-green-700 border-green-200'}`}>
-                Sorgente Dati: {isMock ? 'Locale (Mock)' : 'Google Sheets'}
-             </span>
+             {isMock ? (
+               <span className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200 font-medium" title="I dati sono salvati solo nel browser. Modifica services/storage.ts per collegare Google Sheets.">
+                  <ServerIcon className="h-3.5 w-3.5" />
+                  Salvataggio Locale (Mock)
+               </span>
+             ) : (
+               <span className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full bg-green-50 text-green-700 border border-green-200 font-medium animate-pulse-once">
+                  <CloudIcon className="h-3.5 w-3.5" />
+                  Connesso a Google Sheets
+               </span>
+             )}
           </div>
         </header>
 

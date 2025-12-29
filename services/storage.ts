@@ -3,19 +3,19 @@ import CryptoJS from 'crypto-js';
 // ==========================================
 // CONFIGURATION
 // ==========================================
-// PASTE YOUR DEPLOYED WEB APP URL BELOW
-// IMPORTANT: It must look like "https://script.google.com/macros/s/AKfycbx.../exec"
-// Do NOT paste the "docs.google.com/spreadsheets/..." URL here.
-const GOOGLE_SCRIPT_URL: string = ""; 
+// 1. Pubblica il tuo script come Web App (Chiunque può accedere)
+// 2. Copia l'URL che inizia con "https://script.google.com/..."
+// 3. INCOLLALO QUI SOTTO TRA LE VIRGOLETTE:
+const GOOGLE_SCRIPT_URL: string = "https://script.google.com/macros/s/AKfycbyLZaIhzJQTzJG7gLRCzPw-KlNv8kaDWJqCkrfDTCN9TCeb3rzaDkfqgDAvZyIqYC1e/exec"; 
 
-const ENCRYPTION_KEY = "kondo-manager-secure-key-2025"; // In a production app, use an environment variable
+const ENCRYPTION_KEY = "kondo-manager-secure-key-2025"; 
 
 // Campi che devono essere sempre crittografati nel database
 const SENSITIVE_FIELDS = [
   'password_hash', 
   'two_factor_secret', 
   'remember_token',
-  'password' // In caso venga usato in futuro
+  'password' 
 ];
 
 // ==========================================
@@ -25,7 +25,6 @@ const SENSITIVE_FIELDS = [
 const encryptValue = (value: any): string => {
   if (value === undefined || value === null) return "";
   try {
-    // JSON.stringify ensures we preserve types (numbers vs strings) upon decryption
     return CryptoJS.AES.encrypt(JSON.stringify(value), ENCRYPTION_KEY).toString();
   } catch (e) {
     console.error("Encryption failed", e);
@@ -38,10 +37,9 @@ const decryptValue = (ciphertext: string): any => {
   try {
     const bytes = CryptoJS.AES.decrypt(ciphertext, ENCRYPTION_KEY);
     const originalText = bytes.toString(CryptoJS.enc.Utf8);
-    if (!originalText) return ciphertext; // Return original if empty (might be plain text)
+    if (!originalText) return ciphertext; 
     return JSON.parse(originalText);
   } catch (e) {
-    // Fallback: If decryption fails, it might be legacy plain text data
     return ciphertext;
   }
 };
@@ -49,16 +47,11 @@ const decryptValue = (ciphertext: string): any => {
 const encryptRow = (row: any) => {
   const encrypted: any = {};
   Object.keys(row).forEach(key => {
-    // Non crittografare mai l'ID
     if (key === 'id') {
       encrypted[key] = row[key];
-    } 
-    // Crittografa solo se il campo è nella lista dei campi sensibili
-    else if (SENSITIVE_FIELDS.includes(key)) {
+    } else if (SENSITIVE_FIELDS.includes(key)) {
       encrypted[key] = encryptValue(row[key]);
-    } 
-    // Altrimenti mantieni il valore in chiaro
-    else {
+    } else {
       encrypted[key] = row[key];
     }
   });
@@ -70,13 +63,9 @@ const decryptRow = (row: any) => {
   Object.keys(row).forEach(key => {
     if (key === 'id') {
       decrypted[key] = row[key];
-    } 
-    // Tenta la decrittografia solo per i campi sensibili
-    else if (SENSITIVE_FIELDS.includes(key)) {
+    } else if (SENSITIVE_FIELDS.includes(key)) {
       decrypted[key] = decryptValue(row[key]);
-    } 
-    // Altrimenti usa il valore originale
-    else {
+    } else {
       decrypted[key] = row[key];
     }
   });
@@ -112,7 +101,6 @@ class MockSheetDB implements IDatabase {
 
   async select<T>(table: string): Promise<T[]> {
     await delay(300);
-    // Return empty array by default if no data exists
     return this.get<T[]>(table, []);
   }
 
@@ -145,16 +133,18 @@ class MockSheetDB implements IDatabase {
 }
 
 // ==========================================
-// REAL GOOGLE SHEETS STORAGE (With Encryption)
+// REAL GOOGLE SHEETS STORAGE
 // ==========================================
 class GoogleSheetsDB implements IDatabase {
   private baseUrl: string;
 
   constructor(url: string) {
     this.baseUrl = url;
+    console.log("🔌 KondoManager: Inizializzato con Google Sheets Backend");
   }
 
   async select<T>(table: string): Promise<T[]> {
+    console.log(`📡 Fetching ${table}...`);
     const response = await fetch(`${this.baseUrl}?action=select&table=${table}`);
     if (!response.ok) throw new Error('Network response was not ok');
     const text = await response.text();
@@ -170,7 +160,7 @@ class GoogleSheetsDB implements IDatabase {
   }
 
   async insert<T extends { id: number }>(table: string, item: Omit<T, 'id'>): Promise<T> {
-    // Encrypt data before sending
+    console.log(`💾 Inserting into ${table}...`, item);
     const encryptedItem = encryptRow(item);
     
     const response = await fetch(`${this.baseUrl}?action=insert&table=${table}`, {
@@ -189,7 +179,7 @@ class GoogleSheetsDB implements IDatabase {
   }
 
   async update<T extends { id: number }>(table: string, id: number, updates: Partial<T>): Promise<T> {
-    // Encrypt updates before sending
+    console.log(`📝 Updating ${table} ID ${id}...`);
     const encryptedUpdates = encryptRow(updates);
 
     const response = await fetch(`${this.baseUrl}?action=update&table=${table}&id=${id}`, {
@@ -208,6 +198,7 @@ class GoogleSheetsDB implements IDatabase {
   }
 
   async delete(table: string, id: number): Promise<void> {
+    console.log(`🗑️ Deleting from ${table} ID ${id}...`);
     const response = await fetch(`${this.baseUrl}?action=delete&table=${table}&id=${id}`, {
       method: 'POST',
     });
@@ -221,8 +212,12 @@ class GoogleSheetsDB implements IDatabase {
   }
 }
 
-// Export the correct instance based on configuration
-// Check if URL is present AND looks like a script URL (not a spreadsheet view URL)
+// Export checks
 const isValidScriptUrl = GOOGLE_SCRIPT_URL && GOOGLE_SCRIPT_URL.includes("script.google.com");
+
+if (!isValidScriptUrl) {
+  console.warn("⚠️ MOCK MODE ATTIVA: Inserisci l'URL di Google Script in services/storage.ts per salvare i dati online.");
+}
+
 export const isMock = !isValidScriptUrl;
 export const db: IDatabase = isMock ? new MockSheetDB() : new GoogleSheetsDB(GOOGLE_SCRIPT_URL);
