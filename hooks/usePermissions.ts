@@ -13,6 +13,7 @@ export const usePermissions = () => {
   const canAccessView = (view: ViewState): boolean => {
     switch (view) {
       case 'dashboard':
+        return hasRole(['admin', 'manager']); // Dashboard solo per staff
       case 'profile':
       case 'segnalazioni': // Tutti possono vedere e creare segnalazioni
         return true;

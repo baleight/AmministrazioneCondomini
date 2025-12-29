@@ -13,7 +13,8 @@ import {
   PencilSquareIcon,
   TrashIcon,
   MagnifyingGlassIcon,
-  FunnelIcon
+  FunnelIcon,
+  XMarkIcon
 } from '@heroicons/react/24/outline';
 
 export const AnagraficheList: React.FC = () => {
@@ -102,11 +103,19 @@ export const AnagraficheList: React.FC = () => {
           </div>
           <input
             type="text"
-            className="block w-full rounded-md border-0 py-2.5 pl-10 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
-            placeholder="Cerca per nome, email..."
+            className="block w-full rounded-md border-0 py-2.5 pl-10 pr-10 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+            placeholder="Cerca per nome, email, ruolo..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
+          {searchTerm && (
+            <button
+              onClick={() => setSearchTerm('')}
+              className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 cursor-pointer"
+            >
+              <XMarkIcon className="h-5 w-5" aria-hidden="true" />
+            </button>
+          )}
         </div>
 
         <div className="w-full sm:w-48 relative">

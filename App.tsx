@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { DataProvider, useData } from './context/DataContext';
 import { NotificationProvider } from './context/NotificationContext';
@@ -16,10 +16,23 @@ import { ViewState } from './types';
 import { CloudArrowDownIcon } from '@heroicons/react/24/outline';
 
 const AppContent = () => {
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, user } = useAuth();
   const { loading: dataLoading, error: dataError, refreshData } = useData();
   const { canAccessView } = usePermissions();
+  
+  // Imposta la vista iniziale in base al ruolo
   const [currentView, setCurrentView] = useState<ViewState>('dashboard');
+
+  // Gestione Redirect se l'utente si trova su una vista non permessa (es. Dashboard per User)
+  useEffect(() => {
+    if (isAuthenticated && user && !canAccessView(currentView)) {
+      if (user.role === 'user') {
+        setCurrentView('segnalazioni');
+      } else {
+        setCurrentView('dashboard');
+      }
+    }
+  }, [isAuthenticated, user, currentView, canAccessView]);
 
   // 1. Auth Loading State
   if (authLoading) {
@@ -78,9 +91,10 @@ const AppContent = () => {
 
   // 5. Main Application Routing
   const renderView = () => {
-    // Se l'utente non ha i permessi per la vista corrente, lo riportiamo alla dashboard
+    // Se l'utente non ha i permessi per la vista corrente, mostriamo un fallback sicuro
+    // L'useEffect sopra si occuperà di aggiornare lo stato 'currentView' correttamente
     if (!canAccessView(currentView)) {
-      return <Dashboard onViewChange={setCurrentView} />;
+      return user?.role === 'user' ? <SegnalazioniList /> : <Dashboard onViewChange={setCurrentView} />;
     }
 
     switch (currentView) {
