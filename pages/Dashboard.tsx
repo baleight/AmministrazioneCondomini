@@ -1,11 +1,10 @@
-import React, { useEffect, useState } from 'react';
-import { ViewState, Condominio, Segnalazione } from '../types';
-import { db } from '../services/storage';
+import React from 'react';
+import { ViewState } from '../types';
+import { useData } from '../context/DataContext';
 import { 
   BuildingOffice2Icon, 
   ExclamationTriangleIcon, 
   CheckCircleIcon,
-  ExclamationCircleIcon
 } from '@heroicons/react/24/outline';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
@@ -14,65 +13,23 @@ interface DashboardProps {
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({ onViewChange }) => {
-  const [stats, setStats] = useState({
-    buildings: 0,
-    activeTickets: 0,
-    resolvedTickets: 0,
-  });
-  const [recentTickets, setRecentTickets] = useState<Segnalazione[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { condomini, segnalazioni } = useData();
 
-  useEffect(() => {
-    const loadData = async () => {
-      setLoading(true);
-      try {
-        const [condomini, tickets] = await Promise.all([
-          db.select<Condominio>('condomini'),
-          db.select<Segnalazione>('segnalazioni')
-        ]);
-        
-        setStats({
-          buildings: condomini.length,
-          activeTickets: tickets.filter(t => t.status !== 'resolved').length,
-          resolvedTickets: tickets.filter(t => t.status === 'resolved').length,
-        });
+  // Calculate stats from Context data
+  const stats = {
+    buildings: condomini.length,
+    activeTickets: segnalazioni.filter(t => t.status !== 'resolved').length,
+    resolvedTickets: segnalazioni.filter(t => t.status === 'resolved').length,
+  };
 
-        setRecentTickets(tickets.slice(0, 5));
-      } catch (err: any) {
-        console.error("Dashboard load failed:", err);
-        setError(err.message || 'Impossibile caricare i dati della dashboard.');
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadData();
-  }, []);
+  const recentTickets = [...segnalazioni]
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .slice(0, 5);
 
   const chartData = [
     { name: 'Attive', value: stats.activeTickets, color: '#ef4444' },
     { name: 'Risolte', value: stats.resolvedTickets, color: '#22c55e' },
   ];
-
-  if (loading) {
-    return (
-      <div className="flex justify-center py-12">
-         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="bg-red-50 p-4 rounded-lg flex items-start gap-3">
-        <ExclamationCircleIcon className="h-5 w-5 text-red-500 mt-0.5" />
-        <div>
-          <h3 className="text-sm font-medium text-red-800">Errore caricamento dashboard</h3>
-          <p className="text-sm text-red-700 mt-1">{error}</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6">
@@ -103,7 +60,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onViewChange }) => {
             <CheckCircleIcon className="h-6 w-6 text-green-600" />
           </div>
           <div>
-            <p className="text-sm font-medium text-gray-500">Risolti questo Mese</p>
+            <p className="text-sm font-medium text-gray-500">Risolti Totali</p>
             <p className="text-2xl font-bold text-gray-900">{stats.resolvedTickets}</p>
           </div>
         </div>

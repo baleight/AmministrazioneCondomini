@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { db } from '../services/storage';
+import { useData } from '../context/DataContext';
 import { Anagrafica } from '../types';
 import { AnagraficaForm } from '../components/AnagraficaForm';
 import { 
@@ -13,27 +14,10 @@ import {
 } from '@heroicons/react/24/outline';
 
 export const AnagraficheList: React.FC = () => {
-  const [people, setPeople] = useState<Anagrafica[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { anagrafiche, refreshData } = useData();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPerson, setEditingPerson] = useState<Anagrafica | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-
-  const loadPeople = async () => {
-    setLoading(true);
-    try {
-      const data = await db.select<Anagrafica>('anagrafiche');
-      setPeople(data);
-    } catch (error) {
-      console.error("Error loading people:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadPeople();
-  }, []);
 
   const handleOpenModal = (person?: Anagrafica) => {
     setEditingPerson(person || null);
@@ -49,7 +33,7 @@ export const AnagraficheList: React.FC = () => {
       }
       setIsModalOpen(false);
       setEditingPerson(null);
-      loadPeople();
+      await refreshData();
     } catch (err: any) {
       alert(`Errore durante il salvataggio: ${err.message}`);
     }
@@ -59,14 +43,14 @@ export const AnagraficheList: React.FC = () => {
     if (window.confirm('Sei sicuro di voler eliminare questa anagrafica?')) {
       try {
         await db.delete('anagrafiche', id);
-        loadPeople();
+        await refreshData();
       } catch (err: any) {
         alert(`Errore durante l'eliminazione: ${err.message}`);
       }
     }
   };
 
-  const filteredPeople = people.filter(person => {
+  const filteredPeople = anagrafiche.filter(person => {
     const term = searchTerm.toLowerCase();
     const roleIt = person.role === 'owner' ? 'proprietario' : 'inquilino';
     return (
@@ -122,9 +106,7 @@ export const AnagraficheList: React.FC = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {loading ? (
-                <tr><td colSpan={5} className="p-6 text-center">Caricamento...</td></tr>
-              ) : people.length === 0 ? (
+              {anagrafiche.length === 0 ? (
                 <tr><td colSpan={5} className="p-6 text-center text-gray-500">Nessuna anagrafica trovata.</td></tr>
               ) : filteredPeople.length === 0 ? (
                 <tr><td colSpan={5} className="p-6 text-center text-gray-500">Nessun risultato trovato per la ricerca "{searchTerm}".</td></tr>

@@ -1,5 +1,6 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { db } from '../services/storage';
+import { useData } from '../context/DataContext';
 import { Condominio } from '../types';
 import { CondominioForm } from '../components/CondominioForm';
 import { 
@@ -8,15 +9,12 @@ import {
   HomeModernIcon, 
   PencilSquareIcon, 
   TrashIcon, 
-  ExclamationCircleIcon,
   FunnelIcon,
   ArrowsUpDownIcon
 } from '@heroicons/react/24/outline';
 
 export const CondominiList: React.FC = () => {
-  const [items, setItems] = useState<Condominio[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { condomini, refreshData } = useData();
   
   // Stati per filtri e ordinamento
   const [filterCity, setFilterCity] = useState<string>('');
@@ -25,47 +23,27 @@ export const CondominiList: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCondo, setEditingCondo] = useState<Condominio | null>(null);
 
-  const loadItems = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await db.select<Condominio>('condomini');
-      setItems(data);
-    } catch (err: any) {
-      console.error(err);
-      setError(err.message || 'Impossibile caricare gli edifici. Controlla la connessione o la configurazione.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadItems();
-  }, []);
-
   // Calcolo delle città uniche per il menu a tendina
   const uniqueCities = useMemo(() => {
-    const cities = items.map(i => i.city).filter(c => c && c.trim() !== ''); // Estrai città valide
-    return Array.from(new Set(cities)).sort(); // Rimuovi duplicati e ordina
-  }, [items]);
+    const cities = condomini.map(i => i.city).filter(c => c && c.trim() !== '');
+    return Array.from(new Set(cities)).sort();
+  }, [condomini]);
 
   // Logica di filtraggio e ordinamento
   const processedItems = useMemo(() => {
-    let result = [...items];
+    let result = [...condomini];
 
-    // 1. Filtro per Città
     if (filterCity) {
       result = result.filter(item => item.city === filterCity);
     }
 
-    // 2. Ordinamento Alfabetico per Nome
     result.sort((a, b) => {
       const compare = a.nome.localeCompare(b.nome);
       return sortOrder === 'asc' ? compare : -compare;
     });
 
     return result;
-  }, [items, filterCity, sortOrder]);
+  }, [condomini, filterCity, sortOrder]);
 
   const handleOpenModal = (condo?: Condominio) => {
     setEditingCondo(condo || null);
@@ -81,7 +59,7 @@ export const CondominiList: React.FC = () => {
       }
       setIsModalOpen(false);
       setEditingCondo(null);
-      loadItems();
+      await refreshData(); // Ricarica tutto
     } catch (err: any) {
       alert(`Errore durante il salvataggio: ${err.message}`);
     }
@@ -91,28 +69,12 @@ export const CondominiList: React.FC = () => {
     if (window.confirm('Sei sicuro di voler eliminare questo condominio? Questa azione non può essere annullata.')) {
       try {
         await db.delete('condomini', id);
-        loadItems();
+        await refreshData();
       } catch (err: any) {
         alert(`Errore durante l'eliminazione: ${err.message}`);
       }
     }
   };
-
-  if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center h-96 text-center">
-        <ExclamationCircleIcon className="h-16 w-16 text-red-400 mb-4" />
-        <h3 className="text-lg font-medium text-gray-900">Impossibile caricare i dati</h3>
-        <p className="text-gray-500 max-w-md mt-2 mb-6">{error}</p>
-        <button 
-          onClick={loadItems}
-          className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
-        >
-          Riprova
-        </button>
-      </div>
-    );
-  }
 
   return (
     <div>
@@ -131,7 +93,7 @@ export const CondominiList: React.FC = () => {
       </div>
 
       {/* Toolbar Filtri e Ordinamento */}
-      {!loading && items.length > 0 && (
+      {condomini.length > 0 && (
         <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-6 flex flex-col sm:flex-row gap-4 items-center">
           <div className="flex items-center gap-2 w-full sm:w-auto">
             <FunnelIcon className="h-5 w-5 text-gray-400" />
@@ -159,75 +121,63 @@ export const CondominiList: React.FC = () => {
           </button>
           
           <div className="flex-1 text-right text-xs text-gray-400 hidden sm:block">
-            Mostrati {processedItems.length} di {items.length} condomini
+            Mostrati {processedItems.length} di {condomini.length} condomini
           </div>
         </div>
       )}
 
-      {loading ? (
-        <div className="flex justify-center py-12">
-           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {processedItems.map(condo => (
-            <div key={condo.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow group relative">
-              <div className="h-32 bg-gradient-to-r from-indigo-500 to-purple-500 relative">
-                <div className="absolute -bottom-6 left-6 p-2 bg-white rounded-lg shadow-sm">
-                   <HomeModernIcon className="h-8 w-8 text-indigo-600" />
-                </div>
-                
-                {/* Action Buttons Overlay */}
-                <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button 
-                    onClick={() => handleOpenModal(condo)}
-                    className="p-2 bg-white/20 backdrop-blur-sm rounded-full hover:bg-white/40 text-white transition-colors"
-                    title="Modifica Condominio"
-                  >
-                    <PencilSquareIcon className="h-5 w-5" />
-                  </button>
-                  <button 
-                    onClick={() => handleDelete(condo.id)}
-                    className="p-2 bg-white/20 backdrop-blur-sm rounded-full hover:bg-red-500/80 text-white transition-colors"
-                    title="Elimina Condominio"
-                  >
-                    <TrashIcon className="h-5 w-5" />
-                  </button>
-                </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {processedItems.map(condo => (
+          <div key={condo.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow group relative">
+            <div className="h-32 bg-gradient-to-r from-indigo-500 to-purple-500 relative">
+              <div className="absolute -bottom-6 left-6 p-2 bg-white rounded-lg shadow-sm">
+                 <HomeModernIcon className="h-8 w-8 text-indigo-600" />
               </div>
-              <div className="pt-8 p-6">
-                <h3 className="text-lg font-bold text-gray-900">{condo.nome}</h3>
-                <div className="flex items-center text-gray-500 mt-2 text-sm">
-                  <MapPinIcon className="h-4 w-4 mr-1" />
-                  {condo.indirizzo}, {condo.city}
-                </div>
-                <div className="mt-4 pt-4 border-t border-gray-100 flex justify-between items-center">
-                   <span className="text-xs font-semibold bg-gray-100 text-gray-600 px-2 py-1 rounded">
-                     {condo.units_count} Unità
+              
+              {/* Action Buttons Overlay */}
+              <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button 
+                  onClick={() => handleOpenModal(condo)}
+                  className="p-2 bg-white/20 backdrop-blur-sm rounded-full hover:bg-white/40 text-white transition-colors"
+                  title="Modifica Condominio"
+                >
+                  <PencilSquareIcon className="h-5 w-5" />
+                </button>
+                <button 
+                  onClick={() => handleDelete(condo.id)}
+                  className="p-2 bg-white/20 backdrop-blur-sm rounded-full hover:bg-red-500/80 text-white transition-colors"
+                  title="Elimina Condominio"
+                >
+                  <TrashIcon className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+            <div className="pt-8 p-6">
+              <h3 className="text-lg font-bold text-gray-900">{condo.nome}</h3>
+              <div className="flex items-center text-gray-500 mt-2 text-sm">
+                <MapPinIcon className="h-4 w-4 mr-1" />
+                {condo.indirizzo}, {condo.city}
+              </div>
+              <div className="mt-4 pt-4 border-t border-gray-100 flex justify-between items-center">
+                 <span className="text-xs font-semibold bg-gray-100 text-gray-600 px-2 py-1 rounded">
+                   {condo.units_count} Unità
+                 </span>
+                 <div className="flex gap-2">
+                   <span className="text-xs text-gray-400 font-mono bg-gray-50 px-1 rounded">
+                     {condo.codice_fiscale}
                    </span>
-                   <div className="flex gap-2">
-                     <span className="text-xs text-gray-400 font-mono bg-gray-50 px-1 rounded">
-                       {condo.codice_fiscale}
-                     </span>
-                   </div>
-                </div>
+                 </div>
               </div>
             </div>
-          ))}
-          
-          {items.length === 0 && (
-            <div className="col-span-full text-center py-12 text-gray-500 bg-white rounded-xl border border-dashed border-gray-300">
-              Nessun condominio trovato. Clicca su "Aggiungi Condominio" per crearne uno.
-            </div>
-          )}
-          
-          {items.length > 0 && processedItems.length === 0 && (
-             <div className="col-span-full text-center py-12 text-gray-500">
-               Nessun risultato corrisponde ai filtri selezionati.
-             </div>
-          )}
-        </div>
-      )}
+          </div>
+        ))}
+        
+        {condomini.length === 0 && (
+          <div className="col-span-full text-center py-12 text-gray-500 bg-white rounded-xl border border-dashed border-gray-300">
+            Nessun condominio trovato. Clicca su "Aggiungi Condominio" per crearne uno.
+          </div>
+        )}
+      </div>
 
       {/* Modal */}
       {isModalOpen && (
