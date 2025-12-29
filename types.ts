@@ -10,6 +10,10 @@ export interface User {
   name: string;
   email: string;
   role: 'admin' | 'manager' | 'user';
+  // Campi sensibili per autenticazione e sicurezza
+  password_hash?: string;
+  two_factor_secret?: string;
+  remember_token?: string;
 }
 
 export interface Condominio {

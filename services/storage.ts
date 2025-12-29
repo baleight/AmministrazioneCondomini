@@ -10,6 +10,14 @@ const GOOGLE_SCRIPT_URL = "";
 
 const ENCRYPTION_KEY = "kondo-manager-secure-key-2025"; // In a production app, use an environment variable
 
+// Campi che devono essere sempre crittografati nel database
+const SENSITIVE_FIELDS = [
+  'password_hash', 
+  'two_factor_secret', 
+  'remember_token',
+  'password' // In caso venga usato in futuro
+];
+
 // ==========================================
 // ENCRYPTION HELPERS
 // ==========================================
@@ -41,11 +49,17 @@ const decryptValue = (ciphertext: string): any => {
 const encryptRow = (row: any) => {
   const encrypted: any = {};
   Object.keys(row).forEach(key => {
-    // Never encrypt ID as it is required for DB lookups
+    // Non crittografare mai l'ID
     if (key === 'id') {
       encrypted[key] = row[key];
-    } else {
+    } 
+    // Crittografa solo se il campo è nella lista dei campi sensibili
+    else if (SENSITIVE_FIELDS.includes(key)) {
       encrypted[key] = encryptValue(row[key]);
+    } 
+    // Altrimenti mantieni il valore in chiaro
+    else {
+      encrypted[key] = row[key];
     }
   });
   return encrypted;
@@ -56,8 +70,14 @@ const decryptRow = (row: any) => {
   Object.keys(row).forEach(key => {
     if (key === 'id') {
       decrypted[key] = row[key];
-    } else {
+    } 
+    // Tenta la decrittografia solo per i campi sensibili
+    else if (SENSITIVE_FIELDS.includes(key)) {
       decrypted[key] = decryptValue(row[key]);
+    } 
+    // Altrimenti usa il valore originale
+    else {
+      decrypted[key] = row[key];
     }
   });
   return decrypted;

@@ -2,7 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { db } from '../services/storage';
 import { Condominio } from '../types';
 import { CondominioForm } from '../components/CondominioForm';
-import { PlusIcon, MapPinIcon, HomeModernIcon, PencilSquareIcon, ExclamationCircleIcon } from '@heroicons/react/24/outline';
+import { 
+  PlusIcon, 
+  MapPinIcon, 
+  HomeModernIcon, 
+  PencilSquareIcon, 
+  TrashIcon,
+  ExclamationCircleIcon 
+} from '@heroicons/react/24/outline';
 
 export const CondominiList: React.FC = () => {
   const [items, setItems] = useState<Condominio[]>([]);
@@ -49,6 +56,17 @@ export const CondominiList: React.FC = () => {
     }
   };
 
+  const handleDelete = async (id: number) => {
+    if (window.confirm('Sei sicuro di voler eliminare questo condominio? Questa azione non può essere annullata.')) {
+      try {
+        await db.delete('condomini', id);
+        loadItems();
+      } catch (err: any) {
+        alert(`Errore durante l'eliminazione: ${err.message}`);
+      }
+    }
+  };
+
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center h-96 text-center">
@@ -88,18 +106,27 @@ export const CondominiList: React.FC = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {items.map(condo => (
-            <div key={condo.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow group">
+            <div key={condo.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow group relative">
               <div className="h-32 bg-gradient-to-r from-indigo-500 to-purple-500 relative">
                 <div className="absolute -bottom-6 left-6 p-2 bg-white rounded-lg shadow-sm">
                    <HomeModernIcon className="h-8 w-8 text-indigo-600" />
                 </div>
-                <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                
+                {/* Action Buttons Overlay */}
+                <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button 
                     onClick={() => handleOpenModal(condo)}
                     className="p-2 bg-white/20 backdrop-blur-sm rounded-full hover:bg-white/40 text-white transition-colors"
                     title="Modifica Condominio"
                   >
                     <PencilSquareIcon className="h-5 w-5" />
+                  </button>
+                  <button 
+                    onClick={() => handleDelete(condo.id)}
+                    className="p-2 bg-white/20 backdrop-blur-sm rounded-full hover:bg-red-500/80 text-white transition-colors"
+                    title="Elimina Condominio"
+                  >
+                    <TrashIcon className="h-5 w-5" />
                   </button>
                 </div>
               </div>
