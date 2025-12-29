@@ -1,5 +1,6 @@
 import React, { ReactNode } from 'react';
 import { ViewState } from '../types';
+import { useAuth } from '../context/AuthContext';
 import { isMock } from '../services/storage';
 import { 
   BuildingOffice2Icon, 
@@ -8,7 +9,7 @@ import {
   MegaphoneIcon, 
   HomeIcon,
   DocumentDuplicateIcon,
-  Cog6ToothIcon
+  ArrowRightOnRectangleIcon
 } from '@heroicons/react/24/outline';
 
 interface LayoutProps {
@@ -18,14 +19,20 @@ interface LayoutProps {
 }
 
 export const Layout: React.FC<LayoutProps> = ({ children, currentView, onViewChange }) => {
-  const menuItems: { id: ViewState; label: string; icon: any }[] = [
-    { id: 'dashboard', label: 'Dashboard', icon: HomeIcon },
-    { id: 'condomini', label: 'Condomini', icon: BuildingOffice2Icon },
-    { id: 'immobili', label: 'Unità Immobiliari', icon: DocumentDuplicateIcon },
-    { id: 'anagrafiche', label: 'Anagrafiche', icon: UsersIcon },
-    { id: 'segnalazioni', label: 'Segnalazioni', icon: WrenchScrewdriverIcon },
-    { id: 'comunicazioni', label: 'Comunicazioni', icon: MegaphoneIcon },
+  const { user, logout } = useAuth();
+  const isAdmin = user?.role === 'admin';
+
+  // Define menus with role access
+  const allMenuItems: { id: ViewState; label: string; icon: any; adminOnly: boolean }[] = [
+    { id: 'dashboard', label: 'Dashboard', icon: HomeIcon, adminOnly: false },
+    { id: 'condomini', label: 'Condomini', icon: BuildingOffice2Icon, adminOnly: true },
+    { id: 'immobili', label: 'Unità Immobiliari', icon: DocumentDuplicateIcon, adminOnly: true },
+    { id: 'anagrafiche', label: 'Anagrafiche', icon: UsersIcon, adminOnly: true },
+    { id: 'segnalazioni', label: 'Segnalazioni', icon: WrenchScrewdriverIcon, adminOnly: false },
+    { id: 'comunicazioni', label: 'Comunicazioni', icon: MegaphoneIcon, adminOnly: false },
   ];
+
+  const visibleMenuItems = allMenuItems.filter(item => isAdmin || !item.adminOnly);
 
   // Helper to translate view titles in header
   const getTitle = (view: ViewState) => {
@@ -52,7 +59,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, onViewCha
         </div>
 
         <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
-          {menuItems.map((item) => (
+          {visibleMenuItems.map((item) => (
             <button
               key={item.id}
               onClick={() => onViewChange(item.id)}
@@ -69,17 +76,20 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, onViewCha
         </nav>
 
         <div className="p-4 border-t border-slate-700">
-          <button className="flex items-center w-full px-3 py-2 text-sm font-medium text-slate-300 rounded-lg hover:bg-slate-800 hover:text-white transition-colors">
-            <Cog6ToothIcon className="h-5 w-5 mr-3" />
-            Impostazioni
+          <button 
+            onClick={logout}
+            className="flex items-center w-full px-3 py-2 text-sm font-medium text-red-300 rounded-lg hover:bg-slate-800 hover:text-red-200 transition-colors mb-2"
+          >
+            <ArrowRightOnRectangleIcon className="h-5 w-5 mr-3" />
+            Disconnetti
           </button>
-          <div className="mt-4 pt-4 border-t border-slate-700 flex items-center px-3">
-            <div className="h-8 w-8 rounded-full bg-indigo-500 flex items-center justify-center text-xs font-bold">
-              AM
+          <div className="mt-2 pt-4 border-t border-slate-700 flex items-center px-3">
+            <div className={`h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold ${isAdmin ? 'bg-indigo-500' : 'bg-green-600'}`}>
+              {user?.name.charAt(0).toUpperCase()}{user?.name.charAt(1).toUpperCase()}
             </div>
-            <div className="ml-3">
-              <p className="text-sm font-medium text-white">Amministratore</p>
-              <p className="text-xs text-slate-400">admin@kondo.it</p>
+            <div className="ml-3 overflow-hidden">
+              <p className="text-sm font-medium text-white truncate" title={user?.name}>{user?.name}</p>
+              <p className="text-xs text-slate-400 capitalize">{isAdmin ? 'Amministratore' : 'Residente'}</p>
             </div>
           </div>
         </div>
