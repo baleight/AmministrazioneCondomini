@@ -65,4 +65,4 @@ export interface Comunicazione {
 }
 
 // Navigation Types
-export type ViewState = 'dashboard' | 'condomini' | 'anagrafiche' | 'immobili' | 'segnalazioni' | 'comunicazioni';
+export type ViewState = 'dashboard' | 'condomini' | 'anagrafiche' | 'immobili' | 'segnalazioni' | 'comunicazioni' | 'profile';

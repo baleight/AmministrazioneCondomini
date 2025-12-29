@@ -3,10 +3,9 @@ import CryptoJS from 'crypto-js';
 // ==========================================
 // CONFIGURATION
 // ==========================================
-// Paste your deployed Web App URL here. 
-// If empty, the app will fall back to Mock (Browser LocalStorage) mode.
-const GOOGLE_SCRIPT_URL = ""; 
+// PASTE YOUR DEPLOYED WEB APP URL BELOW
 // Example: "https://script.google.com/macros/s/AKfycbx.../exec"
+const GOOGLE_SCRIPT_URL = ""; 
 
 const ENCRYPTION_KEY = "kondo-manager-secure-key-2025"; // In a production app, use an environment variable
 
@@ -169,18 +168,16 @@ class GoogleSheetsDB implements IDatabase {
     // Encrypt data before sending
     const encryptedItem = encryptRow(item);
     
+    // We send data wrapper in a 'data' key, but Apps Script needs to parse it as JSON
     const response = await fetch(`${this.baseUrl}?action=insert&table=${table}`, {
       method: 'POST',
-      body: JSON.stringify({ data: encryptedItem }),
+      body: JSON.stringify({ data: encryptedItem }), 
+      // Important: Google Apps Script Web Apps handle POST requests as text/plain to avoid CORS preflight options complexity in simple scripts
     });
     
     const data = await response.json();
     if (data.error) throw new Error(data.error);
     
-    // The server usually returns the created item including the new ID.
-    // If the server returns the data we sent (encrypted), we need to decrypt it 
-    // or merge the ID with our local clear text version. 
-    // Assuming server returns what was saved, we decrypt it.
     return decryptRow(data) as T;
   }
 

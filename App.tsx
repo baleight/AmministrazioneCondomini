@@ -7,6 +7,7 @@ import { ImmobiliList } from './pages/ImmobiliList';
 import { AnagraficheList } from './pages/AnagraficheList';
 import { SegnalazioniList } from './pages/SegnalazioniList';
 import { ComunicazioniList } from './pages/ComunicazioniList';
+import { Profile } from './pages/Profile';
 import { Login } from './pages/Login';
 import { ViewState } from './types';
 
@@ -52,6 +53,8 @@ const AppContent = () => {
         return <SegnalazioniList />;
       case 'comunicazioni':
         return <ComunicazioniList />;
+      case 'profile':
+        return <Profile />;
       default:
         return <Dashboard onViewChange={setCurrentView} />;
     }

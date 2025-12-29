@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { db } from '../services/storage';
 import { Condominio } from '../types';
 import { CondominioForm } from '../components/CondominioForm';
@@ -7,14 +7,21 @@ import {
   MapPinIcon, 
   HomeModernIcon, 
   PencilSquareIcon, 
-  TrashIcon,
-  ExclamationCircleIcon 
+  TrashIcon, 
+  ExclamationCircleIcon,
+  FunnelIcon,
+  ArrowsUpDownIcon
 } from '@heroicons/react/24/outline';
 
 export const CondominiList: React.FC = () => {
   const [items, setItems] = useState<Condominio[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Stati per filtri e ordinamento
+  const [filterCity, setFilterCity] = useState<string>('');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCondo, setEditingCondo] = useState<Condominio | null>(null);
 
@@ -35,6 +42,30 @@ export const CondominiList: React.FC = () => {
   useEffect(() => {
     loadItems();
   }, []);
+
+  // Calcolo delle città uniche per il menu a tendina
+  const uniqueCities = useMemo(() => {
+    const cities = items.map(i => i.city).filter(c => c && c.trim() !== ''); // Estrai città valide
+    return Array.from(new Set(cities)).sort(); // Rimuovi duplicati e ordina
+  }, [items]);
+
+  // Logica di filtraggio e ordinamento
+  const processedItems = useMemo(() => {
+    let result = [...items];
+
+    // 1. Filtro per Città
+    if (filterCity) {
+      result = result.filter(item => item.city === filterCity);
+    }
+
+    // 2. Ordinamento Alfabetico per Nome
+    result.sort((a, b) => {
+      const compare = a.nome.localeCompare(b.nome);
+      return sortOrder === 'asc' ? compare : -compare;
+    });
+
+    return result;
+  }, [items, filterCity, sortOrder]);
 
   const handleOpenModal = (condo?: Condominio) => {
     setEditingCondo(condo || null);
@@ -85,19 +116,53 @@ export const CondominiList: React.FC = () => {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Condomini</h1>
           <p className="text-sm text-gray-500 mt-1">Gestisci il tuo portafoglio immobiliare</p>
         </div>
         <button 
           onClick={() => handleOpenModal()}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow-sm transition-all"
+          className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow-sm transition-all whitespace-nowrap"
         >
           <PlusIcon className="h-5 w-5" />
           Aggiungi Condominio
         </button>
       </div>
+
+      {/* Toolbar Filtri e Ordinamento */}
+      {!loading && items.length > 0 && (
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-6 flex flex-col sm:flex-row gap-4 items-center">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <FunnelIcon className="h-5 w-5 text-gray-400" />
+            <span className="text-sm font-medium text-gray-700">Filtra per:</span>
+            <select 
+              value={filterCity}
+              onChange={(e) => setFilterCity(e.target.value)}
+              className="block w-full sm:w-48 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md border"
+            >
+              <option value="">Tutte le città</option>
+              {uniqueCities.map(city => (
+                <option key={city} value={city}>{city}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="h-6 w-px bg-gray-200 hidden sm:block"></div>
+
+          <button 
+            onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+            className="flex items-center gap-2 text-sm text-gray-600 hover:text-indigo-600 font-medium transition-colors w-full sm:w-auto"
+          >
+            <ArrowsUpDownIcon className="h-4 w-4" />
+            Ordina per Nome ({sortOrder === 'asc' ? 'A-Z' : 'Z-A'})
+          </button>
+          
+          <div className="flex-1 text-right text-xs text-gray-400 hidden sm:block">
+            Mostrati {processedItems.length} di {items.length} condomini
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <div className="flex justify-center py-12">
@@ -105,7 +170,7 @@ export const CondominiList: React.FC = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {items.map(condo => (
+          {processedItems.map(condo => (
             <div key={condo.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow group relative">
               <div className="h-32 bg-gradient-to-r from-indigo-500 to-purple-500 relative">
                 <div className="absolute -bottom-6 left-6 p-2 bg-white rounded-lg shadow-sm">
@@ -154,6 +219,12 @@ export const CondominiList: React.FC = () => {
             <div className="col-span-full text-center py-12 text-gray-500 bg-white rounded-xl border border-dashed border-gray-300">
               Nessun condominio trovato. Clicca su "Aggiungi Condominio" per crearne uno.
             </div>
+          )}
+          
+          {items.length > 0 && processedItems.length === 0 && (
+             <div className="col-span-full text-center py-12 text-gray-500">
+               Nessun risultato corrisponde ai filtri selezionati.
+             </div>
           )}
         </div>
       )}

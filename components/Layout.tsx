@@ -9,7 +9,8 @@ import {
   MegaphoneIcon, 
   HomeIcon,
   DocumentDuplicateIcon,
-  ArrowRightOnRectangleIcon
+  ArrowRightOnRectangleIcon,
+  UserCircleIcon
 } from '@heroicons/react/24/outline';
 
 interface LayoutProps {
@@ -43,6 +44,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, onViewCha
       case 'anagrafiche': return 'Gestione Anagrafiche';
       case 'segnalazioni': return 'Segnalazioni Manutenzione';
       case 'comunicazioni': return 'Comunicazioni';
+      case 'profile': return 'Il Mio Profilo';
       default: return 'KondoManager';
     }
   };
@@ -76,6 +78,15 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, onViewCha
         </nav>
 
         <div className="p-4 border-t border-slate-700">
+          <button 
+            onClick={() => onViewChange('profile')}
+            className={`flex items-center w-full px-3 py-2 text-sm font-medium rounded-lg transition-colors mb-2 ${
+                currentView === 'profile' ? 'bg-indigo-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+            }`}
+          >
+            <UserCircleIcon className="h-5 w-5 mr-3" />
+            Il Mio Profilo
+          </button>
           <button 
             onClick={logout}
             className="flex items-center w-full px-3 py-2 text-sm font-medium text-red-300 rounded-lg hover:bg-slate-800 hover:text-red-200 transition-colors mb-2"

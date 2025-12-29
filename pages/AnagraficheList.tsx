@@ -8,7 +8,8 @@ import {
   EnvelopeIcon, 
   PlusIcon,
   PencilSquareIcon,
-  TrashIcon
+  TrashIcon,
+  MagnifyingGlassIcon
 } from '@heroicons/react/24/outline';
 
 export const AnagraficheList: React.FC = () => {
@@ -16,6 +17,7 @@ export const AnagraficheList: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPerson, setEditingPerson] = useState<Anagrafica | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
   const loadPeople = async () => {
     setLoading(true);
@@ -64,20 +66,47 @@ export const AnagraficheList: React.FC = () => {
     }
   };
 
+  const filteredPeople = people.filter(person => {
+    const term = searchTerm.toLowerCase();
+    const roleIt = person.role === 'owner' ? 'proprietario' : 'inquilino';
+    return (
+      person.nome.toLowerCase().includes(term) ||
+      person.email.toLowerCase().includes(term) ||
+      person.role.toLowerCase().includes(term) ||
+      roleIt.includes(term) ||
+      person.codice_fiscale.toLowerCase().includes(term)
+    );
+  });
+
   return (
     <div>
-       <div className="flex justify-between items-center mb-6">
+       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Elenco Anagrafiche</h1>
           <p className="text-sm text-gray-500 mt-1">Gestisci proprietari, inquilini e contatti</p>
         </div>
         <button 
           onClick={() => handleOpenModal()}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow-sm transition-all"
+          className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow-sm transition-all whitespace-nowrap"
         >
           <PlusIcon className="h-5 w-5" />
           Nuova Anagrafica
         </button>
+      </div>
+
+      <div className="mb-6">
+        <div className="relative rounded-md shadow-sm">
+          <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+            <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" aria-hidden="true" />
+          </div>
+          <input
+            type="text"
+            className="block w-full rounded-md border-0 py-2.5 pl-10 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+            placeholder="Cerca per nome, email, ruolo..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
@@ -97,7 +126,9 @@ export const AnagraficheList: React.FC = () => {
                 <tr><td colSpan={5} className="p-6 text-center">Caricamento...</td></tr>
               ) : people.length === 0 ? (
                 <tr><td colSpan={5} className="p-6 text-center text-gray-500">Nessuna anagrafica trovata.</td></tr>
-              ) : people.map((person) => (
+              ) : filteredPeople.length === 0 ? (
+                <tr><td colSpan={5} className="p-6 text-center text-gray-500">Nessun risultato trovato per la ricerca "{searchTerm}".</td></tr>
+              ) : filteredPeople.map((person) => (
                 <tr key={person.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
