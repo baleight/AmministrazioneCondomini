@@ -4,8 +4,9 @@ import CryptoJS from 'crypto-js';
 // CONFIGURATION
 // ==========================================
 // PASTE YOUR DEPLOYED WEB APP URL BELOW
-// Example: "https://script.google.com/macros/s/AKfycbx.../exec"
-const GOOGLE_SCRIPT_URL = ""; 
+// IMPORTANT: It must look like "https://script.google.com/macros/s/AKfycbx.../exec"
+// Do NOT paste the "docs.google.com/spreadsheets/..." URL here.
+const GOOGLE_SCRIPT_URL: string = ""; 
 
 const ENCRYPTION_KEY = "kondo-manager-secure-key-2025"; // In a production app, use an environment variable
 
@@ -156,29 +157,35 @@ class GoogleSheetsDB implements IDatabase {
   async select<T>(table: string): Promise<T[]> {
     const response = await fetch(`${this.baseUrl}?action=select&table=${table}`);
     if (!response.ok) throw new Error('Network response was not ok');
-    const json = await response.json();
-    if (json.error) throw new Error(json.error);
-    
-    const data = json as T[];
-    // Decrypt data coming from sheets
-    return data.map(row => decryptRow(row));
+    const text = await response.text();
+    try {
+      const json = JSON.parse(text);
+      if (json.error) throw new Error(json.error);
+      const data = json as T[];
+      return data.map(row => decryptRow(row));
+    } catch (e) {
+      console.error("Invalid JSON response:", text.substring(0, 100));
+      throw new Error("Il server ha restituito una risposta non valida. Verifica l'URL dello script.");
+    }
   }
 
   async insert<T extends { id: number }>(table: string, item: Omit<T, 'id'>): Promise<T> {
     // Encrypt data before sending
     const encryptedItem = encryptRow(item);
     
-    // We send data wrapper in a 'data' key, but Apps Script needs to parse it as JSON
     const response = await fetch(`${this.baseUrl}?action=insert&table=${table}`, {
       method: 'POST',
       body: JSON.stringify({ data: encryptedItem }), 
-      // Important: Google Apps Script Web Apps handle POST requests as text/plain to avoid CORS preflight options complexity in simple scripts
     });
     
-    const data = await response.json();
-    if (data.error) throw new Error(data.error);
-    
-    return decryptRow(data) as T;
+    const text = await response.text();
+    try {
+      const data = JSON.parse(text);
+      if (data.error) throw new Error(data.error);
+      return decryptRow(data) as T;
+    } catch (e) {
+      throw new Error("Risposta server non valida durante il salvataggio.");
+    }
   }
 
   async update<T extends { id: number }>(table: string, id: number, updates: Partial<T>): Promise<T> {
@@ -190,21 +197,32 @@ class GoogleSheetsDB implements IDatabase {
       body: JSON.stringify({ data: encryptedUpdates }),
     });
 
-    const data = await response.json();
-    if (data.error) throw new Error(data.error);
-    
-    return decryptRow(data) as T;
+    const text = await response.text();
+    try {
+      const data = JSON.parse(text);
+      if (data.error) throw new Error(data.error);
+      return decryptRow(data) as T;
+    } catch (e) {
+      throw new Error("Risposta server non valida durante l'aggiornamento.");
+    }
   }
 
   async delete(table: string, id: number): Promise<void> {
     const response = await fetch(`${this.baseUrl}?action=delete&table=${table}&id=${id}`, {
       method: 'POST',
     });
-    const data = await response.json();
-    if (data.error) throw new Error(data.error);
+    const text = await response.text();
+    try {
+      const data = JSON.parse(text);
+      if (data.error) throw new Error(data.error);
+    } catch (e) {
+      throw new Error("Risposta server non valida durante l'eliminazione.");
+    }
   }
 }
 
 // Export the correct instance based on configuration
-export const isMock = !GOOGLE_SCRIPT_URL;
+// Check if URL is present AND looks like a script URL (not a spreadsheet view URL)
+const isValidScriptUrl = GOOGLE_SCRIPT_URL && GOOGLE_SCRIPT_URL.includes("script.google.com");
+export const isMock = !isValidScriptUrl;
 export const db: IDatabase = isMock ? new MockSheetDB() : new GoogleSheetsDB(GOOGLE_SCRIPT_URL);
