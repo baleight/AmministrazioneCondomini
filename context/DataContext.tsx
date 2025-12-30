@@ -1,13 +1,15 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { db } from '../services/storage';
 import { useAuth } from './AuthContext';
-import { Condominio, Anagrafica, Immobile, Segnalazione } from '../types';
+import { Condominio, Anagrafica, Immobile, Segnalazione, Documento, Evento } from '../types';
 
 interface DataContextType {
   condomini: Condominio[];
   anagrafiche: Anagrafica[];
   immobili: Immobile[];
   segnalazioni: Segnalazione[];
+  documenti: Documento[];
+  agenda: Evento[];
   loading: boolean;
   error: string | null;
   refreshData: () => Promise<void>;
@@ -22,6 +24,8 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [anagrafiche, setAnagrafiche] = useState<Anagrafica[]>([]);
   const [immobili, setImmobili] = useState<Immobile[]>([]);
   const [segnalazioni, setSegnalazioni] = useState<Segnalazione[]>([]);
+  const [documenti, setDocumenti] = useState<Documento[]>([]);
+  const [agenda, setAgenda] = useState<Evento[]>([]);
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -34,17 +38,21 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       console.log("🔄 Avvio sincronizzazione completa dati...");
       
       // Eseguiamo le richieste in parallelo per velocità
-      const [resCondomini, resAnagrafiche, resImmobili, resSegnalazioni] = await Promise.all([
+      const [resCondomini, resAnagrafiche, resImmobili, resSegnalazioni, resDocumenti, resAgenda] = await Promise.all([
         db.select<Condominio>('condomini'),
         db.select<Anagrafica>('anagrafiche'),
         db.select<Immobile>('immobili'),
-        db.select<Segnalazione>('segnalazioni')
+        db.select<Segnalazione>('segnalazioni'),
+        db.select<Documento>('documenti'),
+        db.select<Evento>('agenda')
       ]);
 
       setCondomini(resCondomini);
       setAnagrafiche(resAnagrafiche);
       setImmobili(resImmobili);
       setSegnalazioni(resSegnalazioni);
+      setDocumenti(resDocumenti);
+      setAgenda(resAgenda);
       
       setDataLoaded(true);
     } catch (err: any) {
@@ -67,7 +75,9 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       condomini, 
       anagrafiche, 
       immobili, 
-      segnalazioni, 
+      segnalazioni,
+      documenti,
+      agenda,
       loading, 
       error, 
       refreshData 

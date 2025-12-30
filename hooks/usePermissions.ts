@@ -16,6 +16,8 @@ export const usePermissions = () => {
         return hasRole(['admin', 'manager']); // Dashboard solo per staff
       case 'profile':
       case 'segnalazioni': // Tutti possono vedere e creare segnalazioni
+      case 'documenti': // Tutti possono vedere i documenti (filtrati lato UI se necessario)
+      case 'agenda': // Tutti possono vedere l'agenda
         return true;
       case 'condomini': // Solo admin e manager possono vedere la lista
       case 'immobili':
@@ -47,6 +49,15 @@ export const usePermissions = () => {
     // Segnalazioni
     canManageTicketStatus: hasRole(['admin', 'manager']), // Cambiare stato o priorità
     canDeleteTicket: hasRole(['admin']),
+
+    // Documenti
+    canUploadDocument: hasRole(['admin', 'manager']),
+    canDeleteDocument: hasRole(['admin']),
+
+    // Agenda
+    canCreateEvent: hasRole(['admin', 'manager']),
+    canEditEvent: hasRole(['admin', 'manager']),
+    canDeleteEvent: hasRole(['admin']),
     
     // Generico
     isAdmin: role === 'admin',

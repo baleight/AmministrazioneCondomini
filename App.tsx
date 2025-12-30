@@ -10,6 +10,8 @@ import { ImmobiliList } from './pages/ImmobiliList';
 import { AnagraficheList } from './pages/AnagraficheList';
 import { SegnalazioniList } from './pages/SegnalazioniList';
 import { ComunicazioniList } from './pages/ComunicazioniList';
+import { DocumentiList } from './pages/DocumentiList';
+import { AgendaList } from './pages/AgendaList';
 import { Profile } from './pages/Profile';
 import { Login } from './pages/Login';
 import { ViewState } from './types';
@@ -110,6 +112,10 @@ const AppContent = () => {
         return <SegnalazioniList />;
       case 'comunicazioni':
         return <ComunicazioniList />;
+      case 'documenti':
+        return <DocumentiList />;
+      case 'agenda':
+        return <AgendaList />;
       case 'profile':
         return <Profile />;
       default:

@@ -1,10 +1,11 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { db } from '../services/storage';
 import { useData } from '../context/DataContext';
 import { useNotification } from '../context/NotificationContext';
 import { usePermissions } from '../hooks/usePermissions';
 import { Condominio } from '../types';
 import { CondominioForm } from '../components/CondominioForm';
+import { jsonToCsv, downloadCsv, csvToJson } from '../services/csvUtils';
 import { 
   PlusIcon, 
   MapPinIcon, 
@@ -12,13 +13,15 @@ import {
   PencilSquareIcon, 
   TrashIcon, 
   FunnelIcon,
-  ArrowsUpDownIcon
+  ArrowsUpDownIcon,
+  ArrowDownTrayIcon,
+  ArrowUpTrayIcon
 } from '@heroicons/react/24/outline';
 
 export const CondominiList: React.FC = () => {
   const { condomini, refreshData } = useData();
   const { notify } = useNotification();
-  const { canCreateCondominio, canEditCondominio, canDeleteCondominio } = usePermissions();
+  const { canCreateCondominio, canEditCondominio, canDeleteCondominio, isAdmin } = usePermissions();
   
   // Stati per filtri e ordinamento
   const [filterCity, setFilterCity] = useState<string>('');
@@ -26,6 +29,9 @@ export const CondominiList: React.FC = () => {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCondo, setEditingCondo] = useState<Condominio | null>(null);
+  
+  const [isImporting, setIsImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Calcolo delle città uniche per il menu a tendina
   const uniqueCities = useMemo(() => {
@@ -83,23 +89,120 @@ export const CondominiList: React.FC = () => {
     }
   };
 
+  // --- Export / Import Logic ---
+  const handleExport = () => {
+    const csv = jsonToCsv(condomini);
+    const date = new Date().toISOString().split('T')[0];
+    downloadCsv(csv, `condomini_export_${date}`);
+    notify('success', 'Export Completato', 'File CSV scaricato.');
+  };
+
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsImporting(true);
+    const reader = new FileReader();
+
+    reader.onload = async (event) => {
+      try {
+        const text = event.target?.result as string;
+        const jsonData = csvToJson(text);
+
+        if (jsonData.length === 0) throw new Error("File vuoto o non valido.");
+
+        let successCount = 0;
+        let errorCount = 0;
+
+        for (const row of jsonData) {
+            try {
+                const { id, ...dataToInsert } = row;
+                if (!dataToInsert.nome || !dataToInsert.indirizzo) {
+                    errorCount++;
+                    continue;
+                }
+                await db.insert<Condominio>('condomini', dataToInsert as Omit<Condominio, 'id'>);
+                successCount++;
+            } catch (err) {
+                errorCount++;
+            }
+        }
+
+        await refreshData();
+        notify(
+            errorCount > 0 ? 'warning' : 'success', 
+            'Importazione Terminata', 
+            `Importati: ${successCount}. Errori: ${errorCount}.`
+        );
+      } catch (err: any) {
+        notify('error', 'Errore Import', err.message);
+      } finally {
+        setIsImporting(false);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      }
+    };
+    reader.readAsText(file);
+  };
+
   return (
     <div>
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Condomini</h1>
           <p className="text-sm text-gray-500 mt-1">Gestisci il tuo portafoglio immobiliare</p>
         </div>
         
-        {canCreateCondominio && (
-          <button 
-            onClick={() => handleOpenModal()}
-            className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2 shadow-sm transition-all whitespace-nowrap"
-          >
-            <PlusIcon className="h-5 w-5" />
-            Aggiungi Condominio
-          </button>
-        )}
+        <div className="flex flex-wrap gap-2 w-full lg:w-auto">
+          {/* Export */}
+          {(canEditCondominio) && (
+             <button
+                onClick={handleExport}
+                className="flex-1 lg:flex-none bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-lg flex items-center justify-center gap-2 shadow-sm transition-all whitespace-nowrap text-sm font-medium"
+             >
+                <ArrowDownTrayIcon className="h-5 w-5" />
+                Export CSV
+             </button>
+          )}
+
+          {/* Import */}
+          {isAdmin && (
+            <>
+                <input 
+                    type="file" 
+                    accept=".csv" 
+                    ref={fileInputRef} 
+                    className="hidden" 
+                    onChange={handleFileChange} 
+                />
+                <button
+                    onClick={handleImportClick}
+                    disabled={isImporting}
+                    className="flex-1 lg:flex-none bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-lg flex items-center justify-center gap-2 shadow-sm transition-all whitespace-nowrap text-sm font-medium disabled:opacity-50"
+                >
+                    {isImporting ? (
+                        <div className="animate-spin h-5 w-5 border-2 border-gray-500 border-t-transparent rounded-full" />
+                    ) : (
+                        <ArrowUpTrayIcon className="h-5 w-5" />
+                    )}
+                    Import CSV
+                </button>
+            </>
+          )}
+
+          {canCreateCondominio && (
+            <button 
+                onClick={() => handleOpenModal()}
+                className="flex-1 lg:flex-none bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2 shadow-sm transition-all whitespace-nowrap text-sm font-medium"
+            >
+                <PlusIcon className="h-5 w-5" />
+                Aggiungi Condominio
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Toolbar Filtri e Ordinamento */}

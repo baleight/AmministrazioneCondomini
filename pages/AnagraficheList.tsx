@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { db } from '../services/storage';
 import { useData } from '../context/DataContext';
 import { useNotification } from '../context/NotificationContext';
 import { usePermissions } from '../hooks/usePermissions';
 import { Anagrafica } from '../types';
 import { AnagraficaForm } from '../components/AnagraficaForm';
+import { jsonToCsv, downloadCsv, csvToJson } from '../services/csvUtils';
 import { 
   UserCircleIcon, 
   PhoneIcon, 
@@ -14,17 +15,21 @@ import {
   TrashIcon,
   MagnifyingGlassIcon,
   FunnelIcon,
-  XMarkIcon
+  XMarkIcon,
+  ArrowDownTrayIcon,
+  ArrowUpTrayIcon
 } from '@heroicons/react/24/outline';
 
 export const AnagraficheList: React.FC = () => {
   const { anagrafiche, refreshData } = useData();
   const { notify } = useNotification();
-  const { canCreateAnagrafica, canEditAnagrafica, canDeleteAnagrafica } = usePermissions();
+  const { canCreateAnagrafica, canEditAnagrafica, canDeleteAnagrafica, isAdmin } = usePermissions();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPerson, setEditingPerson] = useState<Anagrafica | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRole, setFilterRole] = useState<'all' | 'owner' | 'tenant'>('all');
+  const [isImporting, setIsImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleOpenModal = (person?: Anagrafica) => {
     setEditingPerson(person || null);
@@ -60,6 +65,73 @@ export const AnagraficheList: React.FC = () => {
     }
   };
 
+  // --- Export / Import Logic ---
+  const handleExport = () => {
+    const csv = jsonToCsv(anagrafiche);
+    const date = new Date().toISOString().split('T')[0];
+    downloadCsv(csv, `anagrafiche_export_${date}`);
+    notify('success', 'Export Completato', 'Il file CSV è stato scaricato.');
+  };
+
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsImporting(true);
+    const reader = new FileReader();
+
+    reader.onload = async (event) => {
+      try {
+        const text = event.target?.result as string;
+        const jsonData = csvToJson(text);
+
+        if (jsonData.length === 0) throw new Error("Il file sembra vuoto o non valido.");
+
+        let successCount = 0;
+        let errorCount = 0;
+
+        // Iteriamo e inseriamo. Rimuoviamo l'ID per forzare la creazione di nuovi record
+        // db.insert gestirà automaticamente la crittografia dei campi sensibili
+        for (const row of jsonData) {
+            try {
+                // Pulizia base e casting
+                const { id, ...dataToInsert } = row; // Omettiamo l'ID importato
+                
+                // Validazione minima
+                if (!dataToInsert.nome || !dataToInsert.email) {
+                    errorCount++;
+                    continue;
+                }
+
+                await db.insert<Anagrafica>('anagrafiche', dataToInsert as Omit<Anagrafica, 'id'>);
+                successCount++;
+            } catch (err) {
+                errorCount++;
+            }
+        }
+
+        await refreshData();
+        notify(
+            errorCount > 0 ? 'warning' : 'success', 
+            'Importazione Completata', 
+            `Importati: ${successCount}. Errori/Ignorati: ${errorCount}.`
+        );
+
+      } catch (err: any) {
+        notify('error', 'Errore Importazione', err.message || "Impossibile leggere il file.");
+      } finally {
+        setIsImporting(false);
+        if (fileInputRef.current) fileInputRef.current.value = ''; // Reset input
+      }
+    };
+
+    reader.readAsText(file);
+  };
+
   const filteredPeople = anagrafiche.filter(person => {
     const term = searchTerm.toLowerCase();
     const roleIt = person.role === 'owner' ? 'proprietario' : 'inquilino';
@@ -79,21 +151,59 @@ export const AnagraficheList: React.FC = () => {
 
   return (
     <div>
-       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Elenco Anagrafiche</h1>
           <p className="text-sm text-gray-500 mt-1">Gestisci proprietari, inquilini e contatti</p>
         </div>
         
-        {canCreateAnagrafica && (
-          <button 
-            onClick={() => handleOpenModal()}
-            className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2 shadow-sm transition-all whitespace-nowrap"
-          >
-            <PlusIcon className="h-5 w-5" />
-            Nuova Anagrafica
-          </button>
-        )}
+        <div className="flex flex-wrap gap-2 w-full lg:w-auto">
+          {/* Export Button - Visibile a manager/admin */}
+          {(canEditAnagrafica) && (
+             <button
+                onClick={handleExport}
+                className="flex-1 lg:flex-none bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-lg flex items-center justify-center gap-2 shadow-sm transition-all whitespace-nowrap text-sm font-medium"
+             >
+                <ArrowDownTrayIcon className="h-5 w-5" />
+                Export CSV
+             </button>
+          )}
+
+          {/* Import Button - Solo Admin */}
+          {isAdmin && (
+            <>
+                <input 
+                    type="file" 
+                    accept=".csv" 
+                    ref={fileInputRef} 
+                    className="hidden" 
+                    onChange={handleFileChange} 
+                />
+                <button
+                    onClick={handleImportClick}
+                    disabled={isImporting}
+                    className="flex-1 lg:flex-none bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-lg flex items-center justify-center gap-2 shadow-sm transition-all whitespace-nowrap text-sm font-medium disabled:opacity-50"
+                >
+                    {isImporting ? (
+                        <div className="animate-spin h-5 w-5 border-2 border-gray-500 border-t-transparent rounded-full" />
+                    ) : (
+                        <ArrowUpTrayIcon className="h-5 w-5" />
+                    )}
+                    Import CSV
+                </button>
+            </>
+          )}
+
+          {canCreateAnagrafica && (
+            <button 
+              onClick={() => handleOpenModal()}
+              className="flex-1 lg:flex-none bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2 shadow-sm transition-all whitespace-nowrap text-sm font-medium"
+            >
+              <PlusIcon className="h-5 w-5" />
+              Nuova Anagrafica
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="mb-6 flex flex-col sm:flex-row gap-4">

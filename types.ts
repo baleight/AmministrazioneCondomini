@@ -64,5 +64,25 @@ export interface Comunicazione {
   sent_at: string;
 }
 
+export interface Documento {
+  id: number;
+  nome: string;
+  tipo: 'contratto' | 'avviso' | 'verbale' | 'altro';
+  data_caricamento: string;
+  file_data: string; // Base64 string per archiviazione su Sheet
+  file_name: string; // Nome originale del file
+  dimensione: number; // in bytes
+}
+
+export interface Evento {
+  id: number;
+  title: string;
+  description: string;
+  start_date: string; // ISO String
+  end_date?: string;  // ISO String
+  type: 'assemblea' | 'manutenzione' | 'scadenza' | 'altro';
+  condominio_id?: number; // Opzionale, se null è un evento generale
+}
+
 // Navigation Types
-export type ViewState = 'dashboard' | 'condomini' | 'anagrafiche' | 'immobili' | 'segnalazioni' | 'comunicazioni' | 'profile';
+export type ViewState = 'dashboard' | 'condomini' | 'anagrafiche' | 'immobili' | 'segnalazioni' | 'comunicazioni' | 'documenti' | 'agenda' | 'profile';

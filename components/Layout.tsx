@@ -15,7 +15,9 @@ import {
   CloudIcon,
   ServerIcon,
   Bars3Icon,
-  XMarkIcon
+  XMarkIcon,
+  DocumentTextIcon,
+  CalendarDaysIcon
 } from '@heroicons/react/24/outline';
 
 interface LayoutProps {
@@ -32,11 +34,13 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, onViewCha
   // Define menus with role access checks handled by usePermissions
   const allMenuItems: { id: ViewState; label: string; icon: any }[] = [
     { id: 'dashboard', label: 'Dashboard', icon: HomeIcon },
+    { id: 'agenda', label: 'Agenda', icon: CalendarDaysIcon },
     { id: 'condomini', label: 'Condomini', icon: BuildingOffice2Icon },
     { id: 'immobili', label: 'Unità Immobiliari', icon: DocumentDuplicateIcon },
     { id: 'anagrafiche', label: 'Anagrafiche', icon: UsersIcon },
     { id: 'segnalazioni', label: 'Segnalazioni', icon: WrenchScrewdriverIcon },
     { id: 'comunicazioni', label: 'Comunicazioni', icon: MegaphoneIcon },
+    { id: 'documenti', label: 'Documenti', icon: DocumentTextIcon },
   ];
 
   // Filter items based on permissions
@@ -51,6 +55,8 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, onViewCha
       case 'anagrafiche': return 'Gestione Anagrafiche';
       case 'segnalazioni': return 'Segnalazioni Manutenzione';
       case 'comunicazioni': return 'Comunicazioni';
+      case 'documenti': return 'Archivio Documenti';
+      case 'agenda': return 'Agenda e Scadenze';
       case 'profile': return 'Il Mio Profilo';
       default: return 'KondoManager';
     }
