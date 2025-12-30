@@ -6,7 +6,8 @@ import CryptoJS from 'crypto-js';
 // 1. Pubblica il tuo script come Web App (Chiunque può accedere)
 // 2. Copia l'URL che inizia con "https://script.google.com/..."
 // 3. INCOLLALO QUI SOTTO TRA LE VIRGOLETTE:
-const GOOGLE_SCRIPT_URL: string = "https://script.google.com/macros/s/AKfycbyLZaIhzJQTzJG7gLRCzPw-KlNv8kaDWJqCkrfDTCN9TCeb3rzaDkfqgDAvZyIqYC1e/exec"; 
+// Nota: Lascia vuoto per usare la modalità "Mock" (Salvataggio locale nel browser)
+const GOOGLE_SCRIPT_URL: string = ""; 
 
 const ENCRYPTION_KEY = "kondo-manager-secure-key-2025"; 
 
@@ -170,16 +171,21 @@ class GoogleSheetsDB implements IDatabase {
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       
       const text = await response.text();
-      const json = JSON.parse(text);
+      let json;
+      try {
+        json = JSON.parse(text);
+      } catch (e) {
+        throw new Error(`Risposta non valida dal server: ${text.substring(0, 100)}...`);
+      }
       
       if (json.error) throw new Error(json.error);
       
       const data = json as T[];
       // Applica la decrittazione su ogni riga recuperata
       return data.map(row => decryptRow(row));
-    } catch (e) {
+    } catch (e: any) {
       console.error(`Error selecting from ${table}:`, e);
-      throw new Error("Errore di comunicazione con il database Google Sheets.");
+      throw new Error(e.message || "Errore di comunicazione con il database Google Sheets.");
     }
   }
 
@@ -191,20 +197,24 @@ class GoogleSheetsDB implements IDatabase {
     try {
       const response = await fetch(`${this.baseUrl}?action=insert&table=${table}`, {
         method: 'POST',
-        // Usa 'text/plain' per evitare preflight OPTIONS request in alcuni setup GAS, 
-        // anche se application/json è standard.
+        // Usa 'text/plain' per evitare preflight OPTIONS request in alcuni setup GAS
         body: JSON.stringify({ data: encryptedItem }), 
       });
       
       const text = await response.text();
-      const data = JSON.parse(text);
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (e) {
+         throw new Error(`Risposta non valida dal server durante salvataggio.`);
+      }
       
       if (data.error) throw new Error(data.error);
       // Decifra la risposta (solitamente contiene l'ID generato e i dati)
       return decryptRow(data) as T;
-    } catch (e) {
+    } catch (e: any) {
       console.error(`Error inserting into ${table}:`, e);
-      throw new Error("Impossibile salvare i dati.");
+      throw new Error(e.message || "Impossibile salvare i dati.");
     }
   }
 
@@ -220,13 +230,18 @@ class GoogleSheetsDB implements IDatabase {
       });
 
       const text = await response.text();
-      const data = JSON.parse(text);
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch(e) {
+         throw new Error(`Risposta non valida dal server durante aggiornamento.`);
+      }
       
       if (data.error) throw new Error(data.error);
       return decryptRow(data) as T;
-    } catch (e) {
+    } catch (e: any) {
       console.error(`Error updating ${table}:`, e);
-      throw new Error("Impossibile aggiornare i dati.");
+      throw new Error(e.message || "Impossibile aggiornare i dati.");
     }
   }
 
@@ -237,11 +252,16 @@ class GoogleSheetsDB implements IDatabase {
         method: 'POST',
       });
       const text = await response.text();
-      const data = JSON.parse(text);
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch(e) {
+        throw new Error(`Risposta non valida dal server durante eliminazione.`);
+      }
       if (data.error) throw new Error(data.error);
-    } catch (e) {
+    } catch (e: any) {
       console.error(`Error deleting from ${table}:`, e);
-      throw new Error("Impossibile eliminare i dati.");
+      throw new Error(e.message || "Impossibile eliminare i dati.");
     }
   }
 }
@@ -250,7 +270,7 @@ class GoogleSheetsDB implements IDatabase {
 const isValidScriptUrl = GOOGLE_SCRIPT_URL && GOOGLE_SCRIPT_URL.includes("script.google.com");
 
 if (!isValidScriptUrl) {
-  console.warn("⚠️ MOCK MODE ATTIVA: Inserisci l'URL di Google Script in services/storage.ts per salvare i dati online.");
+  console.warn("⚠️ MOCK MODE ATTIVA: Nessun URL backend valido. I dati verranno salvati in localStorage.");
 }
 
 export const isMock = !isValidScriptUrl;
